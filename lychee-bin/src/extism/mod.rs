@@ -10,23 +10,28 @@ use reqwest::{Request, Url};
 use serde::{Deserialize, Serialize};
 use std::{fmt, path::PathBuf, str::FromStr};
 
-pub(crate) fn load_extism_request_chain(paths: &Vec<PathBuf>) -> RequestChain {
-    let path = &paths[0]; // TODO
-    assert!(path.is_file(), "Unable to open file"); // TODO: good error handling
+pub(crate) fn load_extism_request_chain(paths: &[PathBuf]) -> RequestChain {
+    let plugins = paths
+        .iter()
+        .map(|path| {
+            let file = Wasm::file(path);
+            let manifest = Manifest::new([file]);
+            let mut plugin = Plugin::new(manifest, [], true).unwrap(); // TODO: don't unwrap
 
-    let file = Wasm::file(path);
-    let manifest = Manifest::new([file]);
-    let mut plugin = Plugin::new(manifest, [], true).unwrap();
+            let boxed_item: Box<dyn Chainable<reqwest::Request, Status> + std::marker::Send> =
+                Box::new(ExtismChainItem {
+                    function: Box::new(move |req| {
+                        let r = plugin.call::<ExtismRequest, ExtismChainResult>("chain", req);
+                        dbg!(&r);
+                        r.unwrap() // TODO: don't unwrap
+                    }),
+                });
 
-    let x = Box::new(ExtismChainItem {
-        function: Box::new(move |req| {
-            plugin
-                .call::<ExtismRequest, ExtismChainResult>("chain", req)
-                .unwrap()
-        }),
-    });
+            boxed_item
+        })
+        .collect();
 
-    Chain::new(vec![x])
+    Chain::new(plugins)
 }
 
 struct ExtismChainItem {
@@ -53,10 +58,10 @@ enum ExtismChainResult {
     Done(ExtismStatus),
 }
 
-impl Into<ChainResult<Request, Status>> for ExtismChainResult {
-    fn into(self) -> ChainResult<Request, Status> {
-        use ExtismChainResult::*;
-        match self {
+impl From<ExtismChainResult> for ChainResult<Request, Status> {
+    fn from(val: ExtismChainResult) -> Self {
+        use ExtismChainResult::{Done, Next};
+        match val {
             Next(r) => ChainResult::Next(r.into()),
             Done(s) => ChainResult::Done(s.into()),
         }
@@ -97,9 +102,9 @@ impl From<ExtismRequest> for Request {
 
 impl From<ExtismStatus> for Status {
     fn from(value: ExtismStatus) -> Self {
-        use ExtismStatus::*;
+        use ExtismStatus::{Excluded, Ok};
         match value {
-            Ok(s) => Self::Ok(s.try_into().unwrap()),
+            Ok(s) => Self::Ok(s.try_into().unwrap()), // TODO
             Excluded => Self::Excluded,
         }
     }

@@ -6,7 +6,7 @@ pub fn chain(request: ExtismRequest) -> FnResult<ExtismChainResult> {
     // request.url = format!("{}/foo", request.url);
     Ok(ExtismChainResult::Next(request))
     // Ok(ExtismChainResult::Done(ExtismStatus::Excluded))
-    // Ok(ExtismChainResult::Done(ExtismStatus::Excluded))
+    // Ok(ExtismChainResult::Done(ExtismStatus::Ok(777)))
 }
 
 // - - - - - - - - - Copy paste begin - - - - - - - - - - -
