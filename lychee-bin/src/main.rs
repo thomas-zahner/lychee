@@ -85,6 +85,7 @@ mod cache;
 mod client;
 mod color;
 mod commands;
+mod extism;
 mod formatters;
 mod options;
 mod parse;

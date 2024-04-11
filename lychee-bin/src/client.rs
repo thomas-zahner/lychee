@@ -53,8 +53,11 @@ pub(crate) fn create(cfg: &Config, cookie_jar: Option<&Arc<CookieStoreMutex>>) -
         cfg.include_mail
     };
 
+    let plugins = crate::extism::load_extism_request_chain(&cfg.request_plugin);
+
     ClientBuilder::builder()
         .remaps(remaps)
+        .plugin_request_chain(plugins)
         .includes(includes)
         .excludes(excludes)
         .exclude_all_private(cfg.exclude_all_private)

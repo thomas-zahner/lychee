@@ -1365,6 +1365,22 @@ mod cli {
         Err("Did not get the expected command output after multiple attempts.".into())
     }
 
+    #[test]
+    fn test_request_plugins() {
+        let url = "https://example.com";
+        let plugin_path = root_path()
+            .join("lychee-bin/src/extism/plugin/target/wasm32-unknown-unknown/debug/plugin.wasm");
+        main_command()
+            .write_stdin(url)
+            .arg("--request-plugin")
+            .arg(plugin_path)
+            .arg("-")
+            .assert()
+            .success()
+            .stdout(contains("1 Total"))
+            .stdout(contains("1 OK"));
+    }
+
     #[tokio::test]
     async fn test_basic_auth() -> Result<()> {
         let username = "username";

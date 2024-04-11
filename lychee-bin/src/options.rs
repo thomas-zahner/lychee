@@ -401,6 +401,10 @@ separated list of accepted status codes. This example will accept 200, 201,
     #[arg(long)]
     #[serde(default)]
     pub(crate) cookie_jar: Option<PathBuf>,
+
+    #[arg(long)]
+    #[serde(default)]
+    pub(crate) request_plugin: Vec<PathBuf>,
 }
 
 impl Config {

@@ -1,3 +1,7 @@
+//! Create a `Chain` by using a `Vec` of `Box`ed `Chainable` items.
+//! A `Chain` can be useful to create a modular architecture because individual items are
+//! independant and easily replacable.
+
 use crate::Status;
 use async_trait::async_trait;
 use core::fmt::Debug;
@@ -5,15 +9,20 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum ChainResult<T, R> {
+/// Result of elements in the `Chain`
+pub enum ChainResult<T, R> {
+    /// Pass `T` to the next element in the `Chain`
     Next(T),
+    /// Finish the `Chain` so that any potential subsequent `Chain` items are skipped
     Done(R),
 }
 
-pub(crate) type RequestChain = Chain<reqwest::Request, Status>;
+/// TODO
+pub type RequestChain = Chain<reqwest::Request, Status>;
 
 pub(crate) type InnerChain<T, R> = Vec<Box<dyn Chainable<T, R> + Send>>;
 
+/// TODO
 #[derive(Debug)]
 pub struct Chain<T, R>(Arc<Mutex<InnerChain<T, R>>>);
 
@@ -30,7 +39,9 @@ impl<T, R> Clone for Chain<T, R> {
 }
 
 impl<T, R> Chain<T, R> {
-    pub(crate) fn new(values: InnerChain<T, R>) -> Self {
+    /// Create a `Chain` by using a `Vec` of `Box`ed `Chainable` items
+    #[must_use]
+    pub fn new(values: InnerChain<T, R>) -> Self {
         Self(Arc::new(Mutex::new(values)))
     }
 
@@ -49,8 +60,12 @@ impl<T, R> Chain<T, R> {
     }
 }
 
+/// TODO
 #[async_trait]
-pub(crate) trait Chainable<T, R>: Debug {
+pub trait Chainable<T, R>: Debug {
+    /// Invoked when the current element in the `Chain` is handled.
+    /// Optionally mutate `input` and return `ChainResult::Next(input)` to pass the value on onto
+    /// the next element in the `Chain`.
     async fn chain(&mut self, input: T) -> ChainResult<T, R>;
 }
 

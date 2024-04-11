@@ -51,25 +51,23 @@
 doc_comment::doctest!("../../README.md");
 
 mod basic_auth;
-mod chain;
 mod checker;
 mod client;
-/// A pool of clients, to handle concurrent checks
-pub mod collector;
 mod quirks;
 mod retry;
 mod types;
 mod utils;
 
+pub mod chain;
+/// A pool of clients, to handle concurrent checks
+pub mod collector;
 /// Functionality to extract URIs from inputs
 pub mod extract;
-
-pub mod remap;
-
 /// Filters are a way to define behavior when encountering
 /// URIs that need to be treated differently, such as
 /// local IPs or e-mail addresses
 pub mod filter;
+pub mod remap;
 
 #[cfg(test)]
 #[macro_use]
