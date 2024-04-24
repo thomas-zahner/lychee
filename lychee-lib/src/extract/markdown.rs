@@ -1,7 +1,7 @@
 //! Extract links and fragments from markdown documents
 use std::collections::{HashMap, HashSet};
 
-use pulldown_cmark::{Event, Options, Parser, Tag};
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
 
 use crate::{extract::plaintext::extract_plaintext, types::uri::raw::RawUri};
 
@@ -17,9 +17,9 @@ pub(crate) fn extract_markdown(input: &str, include_verbatim: bool) -> Vec<RawUr
     parser
         .filter_map(|event| match event {
             // A link. The first field is the link type, the second the destination URL and the third is a title.
-            Event::Start(Tag::Link(_, uri, _)) => {
+            Event::Start(Tag::Link { dest_url, .. }) => {
                 Some(vec![RawUri {
-                    text: uri.to_string(),
+                    text: dest_url.to_string(),
                     // Emulate `<a href="...">` tag here to be compatible with
                     // HTML links. We might consider using the actual Markdown
                     // `LinkType` for better granularity in the future
@@ -28,9 +28,9 @@ pub(crate) fn extract_markdown(input: &str, include_verbatim: bool) -> Vec<RawUr
                 }])
             }
             // An image. The first field is the link type, the second the destination URL and the third is a title.
-            Event::Start(Tag::Image(_, uri, _)) => {
+            Event::Start(Tag::Image { dest_url, .. }) => {
                 Some(vec![RawUri {
-                    text: uri.to_string(),
+                    text: dest_url.to_string(),
                     // Emulate `<img src="...">` tag here to be compatible with
                     // HTML links. We might consider using the actual Markdown
                     // `LinkType` for better granularity in the future
@@ -43,7 +43,7 @@ pub(crate) fn extract_markdown(input: &str, include_verbatim: bool) -> Vec<RawUr
                 inside_code_block = true;
                 None
             }
-            Event::End(Tag::CodeBlock(_)) => {
+            Event::End(TagEnd::CodeBlock) => {
                 inside_code_block = false;
                 None
             }
@@ -93,14 +93,18 @@ pub(crate) fn extract_markdown_fragments(input: &str) -> HashSet<String> {
     let mut id_generator = HeadingIdGenerator::default();
 
     let mut out = HashSet::new();
+    let mut id_stack = vec![];
 
     for event in Parser::new_ext(input, Options::ENABLE_HEADING_ATTRIBUTES) {
         match event {
-            Event::Start(Tag::Heading(..)) => {
+            Event::Start(Tag::Heading { id, .. }) => {
                 in_heading = true;
+                dbg!(&id);
+                id_stack.push(id);
             }
-            Event::End(Tag::Heading(_level, id, _classes)) => {
-                if let Some(frag) = id {
+            Event::End(TagEnd::Heading { .. }) => {
+                dbg!(&id_stack);
+                if let Some(Some(frag)) = id_stack.pop() {
                     out.insert(frag.to_string());
                 }
 
@@ -120,6 +124,7 @@ pub(crate) fn extract_markdown_fragments(input: &str) -> HashSet<String> {
 
             // An HTML node
             Event::Html(html) => {
+                dbg!(&html);
                 out.extend(extract_html_fragments(&html));
             }
 
