@@ -99,7 +99,6 @@ pub(crate) fn extract_markdown_fragments(input: &str) -> HashSet<String> {
         match event {
             Event::Start(Tag::Heading { id, .. }) => {
                 in_heading = true;
-                dbg!(&id);
                 id_stack.push(id);
             }
             Event::End(TagEnd::Heading { .. }) => {
@@ -124,7 +123,7 @@ pub(crate) fn extract_markdown_fragments(input: &str) -> HashSet<String> {
 
             // An HTML node
             Event::Html(html) => {
-                dbg!(&html);
+                panic!("yayy finally an HTML was emitted");
                 out.extend(extract_html_fragments(&html));
             }
 
@@ -206,6 +205,11 @@ or inline like `https://bar.org` for instance.
         ]);
         let actual = extract_markdown_fragments(MD_INPUT);
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn triggering_html_events() {
+        extract_markdown_fragments("Hello! <span>This is a test</span>.");
     }
 
     #[test]
