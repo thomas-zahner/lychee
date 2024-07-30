@@ -29,6 +29,7 @@ impl Handler<Request, Status> for FlaresolverrProxyHandler {
             .await
             .unwrap();
 
+        // TODO: currently always Status::Ok even when erroneous status code. Related issue: https://github.com/lycheeverse/lychee/issues/1472
         ChainResult::Done(Status::Ok(
             StatusCode::from_u16(response.solution.status).unwrap(),
         ))
