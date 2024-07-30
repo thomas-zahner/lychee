@@ -1,0 +1,21 @@
+[package]
+name = "flaresolverr_chain"
+version = "0.1.0"
+edition = "2021"
+
+[[example]]
+name = "flaresolverr_chain"
+path = "flaresolverr_chain.rs"
+
+[dependencies]
+async-trait = "0.1.80"
+lychee-lib = { path = "../../lychee-lib", default-features = false }
+reqwest = { version = "0.12.4", features = ["json"] }
+serde = "1.0.204"
+tokio = { version = "1.37.0", features = ["full"] }
+
+[features]
+email-check = ["lychee-lib/email-check"]
+native-tls = ["lychee-lib/native-tls"]
+rustls-tls = ["lychee-lib/rustls-tls"]
+default = ["native-tls", "email-check"]
