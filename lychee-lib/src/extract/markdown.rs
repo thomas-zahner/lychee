@@ -236,6 +236,8 @@ https://bar.com/123
 
 or inline like `https://bar.org` for instance.
 
+https://wikipedia.org
+
 ### Some `code` in a heading.
 
 [example](http://example.com)
@@ -258,6 +260,7 @@ or inline like `https://bar.org` for instance.
 
     #[test]
     fn test_skip_verbatim() {
+        // TODO: fix test to update definition of "verbatim" & update docs
         let expected = vec![
             RawUri {
                 text: "https://foo.com".to_string(),
