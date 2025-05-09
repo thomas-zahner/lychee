@@ -1324,6 +1324,7 @@ mod cli {
 
         Ok(())
     }
+
     #[tokio::test]
     async fn test_verbatim_skipped_by_default_via_file() -> Result<()> {
         let file = fixtures_path().join("TEST_VERBATIM.html");
