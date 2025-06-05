@@ -13,7 +13,11 @@
     clippy::default_trait_access,
     clippy::used_underscore_binding
 )]
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use http::{
     StatusCode,
@@ -329,16 +333,7 @@ impl ClientBuilder {
             HeaderValue::from_static("chunked"),
         );
 
-        // Custom redirect policy to enable logging of redirects.
-        let max_redirects = self.max_redirects;
-        let redirect_policy = redirect::Policy::custom(move |attempt| {
-            if attempt.previous().len() > max_redirects {
-                attempt.stop()
-            } else {
-                debug!("Redirecting to {}", attempt.url());
-                attempt.follow()
-            }
-        });
+        let mut redirect_map = Arc::new(Mutex::new(HashMap::new()));
 
         let mut builder = reqwest::ClientBuilder::new()
             .gzip(true)
@@ -346,7 +341,7 @@ impl ClientBuilder {
             .danger_accept_invalid_certs(self.allow_insecure)
             .connect_timeout(Duration::from_secs(CONNECT_TIMEOUT))
             .tcp_keepalive(Duration::from_secs(TCP_KEEPALIVE))
-            .redirect(redirect_policy);
+            .redirect(redirect_policy(redirect_map.clone(), self.max_redirects));
 
         if let Some(cookie_jar) = self.cookie_jar {
             builder = builder.cookie_provider(cookie_jar);
@@ -390,6 +385,7 @@ impl ClientBuilder {
         let website_checker = WebsiteChecker::new(
             self.method,
             self.retry_wait_time,
+            redirect_map.clone(),
             self.max_retries,
             reqwest_client,
             self.accepted,
@@ -402,6 +398,7 @@ impl ClientBuilder {
         Ok(Client {
             remaps: self.remaps,
             filter,
+            redirect_map: redirect_map.clone(),
             email_checker: MailChecker::new(),
             website_checker,
             file_checker: FileChecker::new(
@@ -413,6 +410,30 @@ impl ClientBuilder {
     }
 }
 
+fn redirect_policy(
+    redirect_map: Arc<Mutex<HashMap<url::Url, url::Url>>>,
+    max_redirects: usize,
+) -> redirect::Policy {
+    let redirect_policy = redirect::Policy::custom(move |attempt| {
+        if let Some(first) = attempt.previous().first() {
+            redirect_map
+                .lock()
+                .unwrap()
+                .insert(first.clone(), attempt.url().clone());
+        }
+
+        dbg!(&redirect_map); // todo
+
+        if attempt.previous().len() > max_redirects {
+            attempt.stop()
+        } else {
+            debug!("Redirecting to {}", attempt.url());
+            attempt.follow()
+        }
+    });
+    redirect_policy
+}
+
 /// Handles incoming requests and returns responses.
 ///
 /// See [`ClientBuilder`] which contains sane defaults for all configuration
@@ -422,7 +443,7 @@ pub struct Client {
     /// Optional remapping rules for URIs matching pattern.
     remaps: Option<Remaps>,
 
-    /// Rules to decided whether each link should be checked or ignored.
+    /// Rules to decide whether a given link should be checked or ignored.
     filter: Filter,
 
     /// A checker for website URLs.
@@ -433,6 +454,8 @@ pub struct Client {
 
     /// A checker for email URLs.
     email_checker: MailChecker,
+
+    redirect_map: Arc<Mutex<HashMap<url::Url, url::Url>>>,
 }
 
 impl Client {
@@ -459,15 +482,6 @@ impl Client {
             source,
             ..
         } = request.try_into()?;
-
-        // Allow filtering based on element and attribute
-        // if !self.filter.is_allowed(uri) {
-        //     return Ok(Response::new(
-        //         uri.clone(),
-        //         Status::Excluded,
-        //         source,
-        //     ));
-        // }
 
         self.remap(uri)?;
 
