@@ -422,8 +422,6 @@ fn redirect_policy(
                 .insert(first.clone(), attempt.url().clone());
         }
 
-        dbg!(&redirect_map); // todo
-
         if attempt.previous().len() > max_redirects {
             attempt.stop()
         } else {

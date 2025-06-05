@@ -4,6 +4,7 @@ use http::StatusCode;
 use reqwest::Response;
 use serde::ser::SerializeStruct;
 use serde::{Serialize, Serializer};
+use url::Url;
 
 use crate::ErrorKind;
 
@@ -29,7 +30,14 @@ pub enum Status {
     /// Request timed out
     Timeout(Option<StatusCode>),
     /// Got redirected to different resource
-    Redirected(StatusCode),
+    Redirected {
+        /// The initial `Url` that was given for link checking
+        original: Url,
+        /// The `Url` that was resolved by following the redirection responses
+        resolved: Url,
+        /// The last `StatusCode` that was returned after following the redirections
+        code: StatusCode,
+    },
     /// The given status code is not known by lychee
     UnknownStatusCode(StatusCode),
     /// Resource was excluded from checking
@@ -46,7 +54,11 @@ impl Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Status::Ok(code) => write!(f, "{code}"),
-            Status::Redirected(code) => write!(f, "Redirect ({code})"),
+            Status::Redirected {
+                original,
+                resolved,
+                code,
+            } => write!(f, "Redirect from {original} to {resolved} ({code})"),
             Status::UnknownStatusCode(code) => write!(f, "Unknown status ({code})"),
             Status::Timeout(Some(code)) => write!(f, "Timeout ({code})"),
             Status::Timeout(None) => f.write_str("Timeout"),
@@ -89,12 +101,7 @@ impl Status {
         if let Some(true) = accepted.map(|a| a.contains(&code)) {
             Self::Ok(code)
         } else {
-            match response.error_for_status_ref() {
-                Ok(_) if code.is_success() => Self::Ok(code),
-                Ok(_) if code.is_redirection() => Self::Redirected(code),
-                Ok(_) => Self::UnknownStatusCode(code),
-                Err(e) => e.into(),
-            }
+            todo!("will be comming from branch 1661-update-accept-behaviour")
         }
     }
 
@@ -140,7 +147,16 @@ impl Status {
     pub fn details(&self) -> Option<String> {
         match &self {
             Status::Ok(code) => code.canonical_reason().map(String::from),
-            Status::Redirected(code) => code.canonical_reason().map(String::from),
+            Status::Redirected {
+                original,
+                resolved,
+                code,
+            } => code.canonical_reason().map(|reason| {
+                format!(
+                    "Redirected from {} to {}, resulting in {}",
+                    original, resolved, reason
+                )
+            }),
             Status::Error(e) => e.details(),
             Status::Timeout(_) => None,
             Status::UnknownStatusCode(_) => None,
@@ -199,7 +215,11 @@ impl Status {
     pub const fn icon(&self) -> &str {
         match self {
             Status::Ok(_) => ICON_OK,
-            Status::Redirected(_) => ICON_REDIRECTED,
+            Status::Redirected {
+                original: _,
+                resolved: _,
+                code: _,
+            } => ICON_REDIRECTED,
             Status::UnknownStatusCode(_) => ICON_UNKNOWN,
             Status::Excluded => ICON_EXCLUDED,
             Status::Error(_) => ICON_ERROR,
@@ -214,7 +234,11 @@ impl Status {
     pub fn code(&self) -> Option<StatusCode> {
         match self {
             Status::Ok(code)
-            | Status::Redirected(code)
+            | Status::Redirected {
+                original: _,
+                resolved: _,
+                code,
+            }
             | Status::UnknownStatusCode(code)
             | Status::Timeout(Some(code)) => Some(*code),
             Status::Error(kind) | Status::Unsupported(kind) => {
@@ -235,9 +259,13 @@ impl Status {
     #[must_use]
     pub fn code_as_string(&self) -> String {
         match self {
-            Status::Ok(code) | Status::Redirected(code) | Status::UnknownStatusCode(code) => {
-                code.as_str().to_string()
+            Status::Ok(code)
+            | Status::Redirected {
+                original: _,
+                resolved: _,
+                code,
             }
+            | Status::UnknownStatusCode(code) => code.as_str().to_string(),
             Status::Excluded => "EXCLUDED".to_string(),
             Status::Error(e) => match e {
                 ErrorKind::NetworkRequest(e)
@@ -333,12 +361,6 @@ mod tests {
                 .code()
                 .unwrap(),
             999
-        );
-        assert_eq!(
-            Status::Redirected(StatusCode::from_u16(300).unwrap())
-                .code()
-                .unwrap(),
-            300
         );
         assert_eq!(Status::Cached(CacheStatus::Ok(200)).code().unwrap(), 200);
         assert_eq!(
