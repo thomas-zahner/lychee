@@ -33,7 +33,7 @@ use crate::{
     checker::{file::FileChecker, mail::MailChecker, website::WebsiteChecker},
     filter::{Excludes, Filter, Includes},
     remap::Remaps,
-    types::DEFAULT_ACCEPTED_STATUS_CODES,
+    types::{DEFAULT_ACCEPTED_STATUS_CODES, methods::RequestMethods},
 };
 
 /// Default number of redirects before a request is deemed as failed, 5.
@@ -390,7 +390,7 @@ impl ClientBuilder {
         };
 
         let website_checker = WebsiteChecker::new(
-            self.method,
+            RequestMethods::default(), // TODO
             self.retry_wait_time,
             self.max_retries,
             reqwest_client,

@@ -3,7 +3,7 @@ use crate::{
     chain::{Chain, ChainResult, ClientRequestChains, Handler, RequestChain},
     quirks::Quirks,
     retry::RetryExt,
-    types::uri::github::GithubUri,
+    types::{methods::RequestMethods, uri::github::GithubUri},
     utils::fragment_checker::{FragmentChecker, FragmentInput},
 };
 use async_trait::async_trait;
@@ -15,7 +15,7 @@ use std::{collections::HashSet, path::Path, time::Duration};
 #[derive(Debug, Clone)]
 pub(crate) struct WebsiteChecker {
     /// Request method used for making requests.
-    method: reqwest::Method,
+    methods: RequestMethods,
 
     /// The HTTP client used for requests.
     reqwest_client: reqwest::Client,
@@ -55,7 +55,7 @@ pub(crate) struct WebsiteChecker {
 impl WebsiteChecker {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
-        method: reqwest::Method,
+        methods: RequestMethods,
         retry_wait_time: Duration,
         max_retries: u64,
         reqwest_client: reqwest::Client,
@@ -66,7 +66,7 @@ impl WebsiteChecker {
         include_fragments: bool,
     ) -> Self {
         Self {
-            method,
+            methods,
             reqwest_client,
             github_client,
             plugin_request_chain,
@@ -218,21 +218,23 @@ impl WebsiteChecker {
     /// - The request failed.
     /// - The response status code is not accepted.
     async fn check_website_inner(&self, uri: &Uri, chain: &RequestChain) -> Status {
-        let request = self
-            .reqwest_client
-            .request(self.method.clone(), uri.as_str())
-            .build();
+        self.methods.x(async |method: Method| {
+            let request = self
+                .reqwest_client
+                .request(method.clone(), uri.as_str())
+                .build();
 
-        let request = match request {
-            Ok(r) => r,
-            Err(e) => return e.into(),
-        };
+            let request = match request {
+                Ok(r) => r,
+                Err(e) => return e.into(),
+            };
 
-        let status = ClientRequestChains::new(vec![&self.plugin_request_chain, chain])
-            .traverse(request)
-            .await;
+            let status = ClientRequestChains::new(vec![&self.plugin_request_chain, chain])
+                .traverse(request)
+                .await;
 
-        self.handle_github(status, uri).await
+            self.handle_github(status, uri).await
+        })
     }
 
     // Pull out the heavy machinery in case of a failed normal request.

@@ -9,6 +9,7 @@ mod error;
 mod file;
 mod input;
 pub(crate) mod mail;
+pub(crate) mod methods;
 mod request;
 pub(crate) mod resolver;
 mod response;
