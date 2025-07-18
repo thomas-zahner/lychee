@@ -185,17 +185,23 @@ impl WebsiteChecker {
 
         match self.check_website_inner(uri, &default_chain).await {
             Status::Ok(code) if self.require_https && uri.scheme() == "http" => {
-                if self
-                    .check_website_inner(&uri.to_https()?, &default_chain)
-                    .await
-                    .is_success()
-                {
-                    Ok(Status::Error(ErrorKind::InsecureURL(uri.to_https()?)))
-                } else {
-                    Ok(Status::Ok(code))
-                }
+                self.require_https(uri, default_chain, code).await
             }
             s => Ok(s),
+        }
+    }
+
+    async fn require_https(
+        &self,
+        uri: &Uri,
+        chain: Chain<Request, Status>,
+        code: StatusCode,
+    ) -> Result<Status, ErrorKind> {
+        let uri = uri.to_https()?;
+        if self.check_website_inner(&uri, &chain).await.is_success() {
+            Ok(Status::Error(ErrorKind::InsecureURL(uri)))
+        } else {
+            Ok(Status::Ok(code))
         }
     }
 
@@ -211,7 +217,7 @@ impl WebsiteChecker {
     /// - The URI is invalid.
     /// - The request failed.
     /// - The response status code is not accepted.
-    async fn check_website_inner(&self, uri: &Uri, default_chain: &RequestChain) -> Status {
+    async fn check_website_inner(&self, uri: &Uri, chain: &RequestChain) -> Status {
         let request = self
             .reqwest_client
             .request(self.method.clone(), uri.as_str())
@@ -222,7 +228,7 @@ impl WebsiteChecker {
             Err(e) => return e.into(),
         };
 
-        let status = ClientRequestChains::new(vec![&self.plugin_request_chain, default_chain])
+        let status = ClientRequestChains::new(vec![&self.plugin_request_chain, chain])
             .traverse(request)
             .await;
 
