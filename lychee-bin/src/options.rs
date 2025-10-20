@@ -853,6 +853,19 @@ and existing cookies will be updated."
     #[arg(long)]
     #[serde(default)]
     pub(crate) include_wikilinks: bool,
+
+    /// Preprocess files based on their extension.
+    #[arg(
+        short,
+        long,
+        long_help = "Preprocess files based on their extension.
+lychee only works well with Markdown, HTML and plain text files.
+This option allows to preprocess and convert input files
+into a plain text file format that lychee can work with.
+        "
+    )]
+    #[serde(default)]
+    pub(crate) process_ext: Option<String>,
 }
 
 impl Config {
@@ -943,6 +956,7 @@ impl Config {
                 no_progress: false,
                 offline: false,
                 output: None,
+                process_ext: None,
                 remap: Vec::<String>::new(),
                 require_https: false,
                 retry_wait_time: DEFAULT_RETRY_WAIT_TIME_SECS,
