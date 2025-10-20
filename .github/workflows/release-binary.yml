@@ -156,6 +156,12 @@ jobs:
           cd out
           tar -czf lychee.tar.gz lychee docs/
 
+      - name: Check if authorized to release
+        if: ${{ github.repository != 'lycheeverse/lychee' || github.ref != 'refs/heads/master' }}
+        run: |
+          echo "Releasing only works on the 'master' branch in the official repository."
+          exit 1
+
       - name: Upload .tar.gz
         uses: actions/upload-release-asset@v1
         env:
