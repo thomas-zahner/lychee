@@ -13,7 +13,7 @@ use http::{
 use lychee_lib::{
     Base, BasicAuthSelector, DEFAULT_MAX_REDIRECTS, DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_WAIT_TIME_SECS, DEFAULT_TIMEOUT_SECS, DEFAULT_USER_AGENT, FileExtensions,
-    FileType, Input, StatusCodeExcluder, StatusCodeSelector, archive::Archive,
+    FileType, Input, ProcessExt, StatusCodeExcluder, StatusCodeSelector, archive::Archive,
 };
 use reqwest::tls;
 use secrecy::SecretString;
@@ -865,7 +865,7 @@ into a plain text file format that lychee can work with.
         "
     )]
     #[serde(default)]
-    pub(crate) process_ext: Option<String>,
+    pub(crate) process_ext: Option<ProcessExt>,
 }
 
 impl Config {
