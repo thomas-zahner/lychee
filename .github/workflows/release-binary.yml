@@ -27,6 +27,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
+      - name: Test
+        if: ${{ github.repository }}
+        run: |
+          echo ${{ github.repository }}
+          echo ${{ github.ref }}
+          exti 1
+
       - name: Get release
         id: get_release
         uses: bruceadams/get-release@v1.3.2
