@@ -1,6 +1,8 @@
 use crate::files_from::FilesFrom;
 use crate::generate::GenerateMode;
 use crate::parse::parse_base;
+use crate::process_ext::ProcessExt;
+use crate::process_ext::deserialize_process_ext;
 use crate::verbosity::Verbosity;
 use anyhow::{Context, Error, Result, anyhow};
 use clap::builder::PossibleValuesParser;
@@ -13,7 +15,7 @@ use http::{
 use lychee_lib::{
     Base, BasicAuthSelector, DEFAULT_MAX_REDIRECTS, DEFAULT_MAX_RETRIES,
     DEFAULT_RETRY_WAIT_TIME_SECS, DEFAULT_TIMEOUT_SECS, DEFAULT_USER_AGENT, FileExtensions,
-    FileType, Input, ProcessExt, StatusCodeExcluder, StatusCodeSelector, archive::Archive,
+    FileType, Input, StatusCodeExcluder, StatusCodeSelector, archive::Archive,
 };
 use reqwest::tls;
 use secrecy::SecretString;
@@ -855,17 +857,9 @@ and existing cookies will be updated."
     pub(crate) include_wikilinks: bool,
 
     /// Preprocess files based on their extension.
-    #[arg(
-        short,
-        long,
-        long_help = "Preprocess files based on their extension.
-lychee only works well with Markdown, HTML and plain text files.
-This option allows to preprocess and convert input files
-into a plain text file format that lychee can work with.
-        "
-    )]
-    #[serde(default)]
-    pub(crate) process_ext: Option<ProcessExt>,
+    #[command(flatten)]
+    #[serde(deserialize_with = "deserialize_process_ext")]
+    pub(crate) process_ext: ProcessExt,
 }
 
 impl Config {
@@ -956,7 +950,7 @@ impl Config {
                 no_progress: false,
                 offline: false,
                 output: None,
-                process_ext: None,
+                process_ext: ProcessExt::default(),
                 remap: Vec::<String>::new(),
                 require_https: false,
                 retry_wait_time: DEFAULT_RETRY_WAIT_TIME_SECS,

@@ -88,6 +88,7 @@ mod files_from;
 mod formatters;
 mod options;
 mod parse;
+mod process_ext;
 mod stats;
 mod time;
 mod verbosity;
@@ -275,6 +276,8 @@ fn run_main() -> Result<i32> {
         print!("{}", generate(&mode)?);
         exit(ExitCode::Success as i32);
     }
+
+    dbg!(&opts.config.process_ext);
 
     let runtime = match opts.config.threads {
         Some(threads) => {

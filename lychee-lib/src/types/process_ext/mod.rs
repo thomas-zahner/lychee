@@ -19,6 +19,11 @@ impl FromStr for ProcessExt {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         todo!("{s}")
     }
+
+    // execute_commands: https://github.com/sharkdp/fd/blob/master/src/exec/command.rs#L54
+    //
+    // fd also uses clap!
+    // https://github.com/sharkdp/fd/blob/f77b693db2bf284768efdbe9f67e21b4c3e53b6a/src/exec/mod.rs#L222
 }
 
 #[derive(Clone, Debug, Error, PartialEq)]
