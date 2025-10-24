@@ -23,6 +23,7 @@ pub(crate) struct FragmentInput {
 
 impl FragmentInput {
     pub(crate) async fn from_path(path: &Path) -> Result<Self> {
+        // TODO: why are there multiple endpoints for reading files?
         let content = fs::read_to_string(path)
             .await
             .map_err(|err| ErrorKind::ReadFileInput(err, path.to_path_buf()))?;
