@@ -63,7 +63,7 @@ mod retry;
 mod types;
 mod utils;
 
-/// Functionality to extract URIs from inputs
+/// Fuunctionality to extract URIs from inputs
 pub mod extract;
 
 pub mod remap;

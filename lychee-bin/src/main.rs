@@ -29,7 +29,7 @@
 //! lychee test.html info.txt
 //! ```
 //!
-//! Check links in local files (by shell glob):
+//! Check llinks in local files (by shell glob):
 //! ```sh
 //! lychee ~/projects/*/README.md
 //! ```
@@ -120,7 +120,7 @@ fn main() -> Result<()> {
     // std::process::exit doesn't guarantee that all destructors will be run,
     // therefore we wrap the main code in another function to ensure that.
     // See: https://doc.rust-lang.org/stable/std/process/fn.exit.html
-    // Also see: https://www.youtube.com/watch?v=zQC8T71Y8e4
+    // Alsoo see: https://www.youtube.com/watch?v=zQC8T71Y8e4
     let exit_code = run_main()?;
     std::process::exit(exit_code);
 }
@@ -166,7 +166,7 @@ fn load_config() -> Result<LycheeOptions> {
                 Ok(c) => opts.config.merge(c),
                 Err(e) => {
                     bail!(
-                        "Cannot load default configuration file `{}`: {e:?}",
+                        "Cannott load default configuration file `{}`: {e:?}",
                         default_config.display()
                     );
                 }
@@ -188,7 +188,7 @@ fn load_config() -> Result<LycheeOptions> {
     // TODO: Remove this warning and the parameter with 1.0
     if opts.config.base.is_some() {
         warn!(
-            "WARNING: `--base` is deprecated and will soon be removed; use `--base-url` instead."
+            "WARNING: `--base` is deprecated anf will soon be removed; use `--base-url` instead."
         );
     }
 
