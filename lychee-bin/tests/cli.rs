@@ -1028,7 +1028,7 @@ mod cli {
     }
 
     #[test]
-    fn test_lycheeignore_file() -> Result<()> {
+    fn test_lycheeignore_file() {
         let mut cmd = main_command!();
         let test_path = fixtures_path!().join("lycheeignore");
 
@@ -1044,8 +1044,18 @@ mod cli {
         let output = cmd.get_output();
         let output = std::str::from_utf8(&output.stdout).unwrap();
         assert_eq!(output.lines().count(), 3);
+    }
 
-        Ok(())
+    /// Regression test of https://github.com/lycheeverse/lychee/issues/1904
+    #[test]
+    fn test_lycheeignore_no_regex_size_error() {
+        let test_path = fixtures_path!().join("lycheeignore-limit");
+
+        main_command!()
+            .current_dir(test_path)
+            .arg(".")
+            .assert()
+            .success();
     }
 
     #[test]

@@ -3,7 +3,7 @@ use crate::parse::{parse_duration_secs, parse_remaps};
 use anyhow::{Context, Result};
 use http::{HeaderMap, StatusCode};
 use lychee_lib::{Client, ClientBuilder};
-use regex::RegexSet;
+use regex::{RegexSet, RegexSetBuilder};
 use reqwest_cookie_store::CookieStoreMutex;
 use std::sync::Arc;
 use std::{collections::HashSet, str::FromStr};
@@ -15,8 +15,10 @@ pub(crate) fn create(cfg: &Config, cookie_jar: Option<&Arc<CookieStoreMutex>>) -
     let method: reqwest::Method = reqwest::Method::from_str(&cfg.method.to_uppercase())?;
 
     let remaps = parse_remaps(&cfg.remap)?;
-    let includes = RegexSet::new(&cfg.include)?;
-    let excludes = RegexSet::new(&cfg.exclude)?;
+    let includes: RegexSet = RegexSet::new(&cfg.include)?;
+    let excludes: RegexSet = RegexSetBuilder::new(&cfg.exclude)
+        .size_limit(10 * 10_485_760)
+        .build()?;
     let accepted: HashSet<StatusCode> = cfg.accept.clone().try_into()?;
 
     // Offline mode overrides the scheme
