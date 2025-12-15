@@ -2851,6 +2851,7 @@ dependencies = [
  "html5ever",
  "html5gum",
  "http 1.4.0",
+ "httpdate",
  "humantime-serde",
  "hyper 1.8.1",
  "ignore",
