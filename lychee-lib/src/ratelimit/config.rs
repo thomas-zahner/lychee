@@ -54,7 +54,51 @@ impl RateLimitConfig {
 }
 
 /// Per-host configuration overrides
-pub type HostConfigs = HashMap<HostKey, HostConfig>;
+#[derive(Debug, Clone, Deserialize)]
+pub struct HostConfigs(HashMap<HostKey, HostConfig>);
+
+impl HostConfigs {
+    pub(crate) fn get(&self, key: &HostKey) -> Option<&HostConfig> {
+        self.0.get(key)
+    }
+
+    pub(crate) fn iter(&self) -> std::collections::hash_map::Iter<'_, HostKey, HostConfig> {
+        self.0.iter()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl Default for HostConfigs {
+    fn default() -> Self {
+        let mut host_config = HashMap::new();
+
+        let mut headers = HeaderMap::new();
+        headers.insert("User-Agent", "Mozilla/5.0".parse().unwrap());
+        host_config.insert(
+            HostKey::from("www.gnu.org"),
+            HostConfig {
+                headers,
+                ..Default::default()
+            },
+        );
+
+        host_config.insert(
+            HostKey::from("github.com"),
+            HostConfig {
+                // See https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api?apiVersion=2022-11-28#about-secondary-rate-limits
+                concurrency: Some(100),
+                request_interval: Some(Duration::from_millis(10)),
+                ..Default::default()
+            },
+        );
+
+        Self(host_config)
+    }
+}
 
 /// Configuration for a specific host's rate limiting behavior
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
