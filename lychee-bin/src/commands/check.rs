@@ -62,7 +62,7 @@ where
     let hide_bar = params.cfg.no_progress;
     let level = params.cfg.verbose().log_level();
 
-    let progress = Progress::new("Extracting links", hide_bar, level, &params.cfg.mode());
+    let progress = Progress::new("Extracting links", hide_bar, level, &params.cfg.mode);
     let show_results_task = tokio::spawn(collect_responses(recv_resp, progress.clone(), stats));
 
     // Wait until all requests are sent
@@ -83,7 +83,7 @@ where
             "Searching for alternatives",
             hide_bar,
             level,
-            &params.cfg.mode(),
+            &params.cfg.mode,
         );
         suggest_archived_links(
             params.cfg.archive(),
