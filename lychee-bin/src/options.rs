@@ -3,6 +3,7 @@ use crate::generate::GenerateMode;
 use crate::parse::parse_base;
 use crate::verbosity::Verbosity;
 use anyhow::{Context, Error, Result, anyhow};
+use clap::ArgMatches;
 use clap::builder::PossibleValuesParser;
 use clap::{Parser, builder::TypedValueParser};
 use const_format::formatcp;
@@ -319,6 +320,28 @@ impl LycheeOptions {
             .map(|raw_input| Input::new(raw_input, default_file_type, self.config.glob_ignore_case))
             .collect::<Result<_, _>>()
             .context("Cannot parse inputs from arguments")
+    }
+
+    /// Parse from `std::env::args_os()`, [exit][Error::exit] on error.
+    pub(crate) fn parse() -> (Self, ArgMatches) {
+        fn format_error<I: clap::CommandFactory>(err: clap::Error) -> clap::Error {
+            let mut cmd = I::command();
+            err.format(&mut cmd)
+        }
+
+        let mut matches = <Self as clap::CommandFactory>::command().get_matches();
+
+        let res = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+            .map_err(format_error::<Self>);
+
+        match res {
+            Ok(s) => (s, matches),
+            Err(e) => {
+                // Since this is more of a development-time error, we aren't doing as fancy of a quit
+                // as `get_matches`
+                e.exit()
+            }
+        }
     }
 }
 
@@ -800,10 +823,9 @@ followed by the absolute link's own path."
     pub(crate) output: Option<PathBuf>,
 
     /// Set the output display mode. Determines how results are presented in the terminal
-    ///
-    /// [default: color]
-    #[arg(long, value_parser = PossibleValuesParser::new(OutputMode::VARIANTS).map(|s| s.parse::<OutputMode>().unwrap()))]
-    mode: Option<OutputMode>,
+    #[arg(long, default_value = "color", value_parser = PossibleValuesParser::new(OutputMode::VARIANTS).map(|s| s.parse::<OutputMode>().unwrap()))]
+    #[serde(default)]
+    pub(crate) mode: OutputMode,
 
     /// Output format of final status report
     ///
@@ -924,10 +946,6 @@ impl Config {
         self.archive.clone().unwrap_or_default()
     }
 
-    pub(crate) fn mode(&self) -> OutputMode {
-        self.mode.clone().unwrap_or_default()
-    }
-
     pub(crate) fn format(&self) -> StatsFormat {
         self.format.clone().unwrap_or_default()
     }
@@ -971,6 +989,8 @@ impl Config {
     /// over `other`.
     pub(crate) fn merge(self, other: Config) -> Config {
         let hosts = self.hosts.merge(other.hosts);
+        let mode = self.mode;
+
         macro_rules! merge {
             (
                 option { $( $optional:ident ),* $(,)? },
@@ -979,6 +999,7 @@ impl Config {
             ) => {
                 Config {
                     hosts,
+                    mode,
                     // Merge chainable fields (e.g. `Vec` and `HashMap`)
                     $( $chainable: self.$chainable.into_iter().chain(other.$chainable).collect(), )*
                     // Use self if present, otherwise use other
@@ -1022,7 +1043,6 @@ impl Config {
                 max_redirects,
                 max_retries,
                 method,
-                mode,
                 retry_wait_time,
                 timeout,
                 user_agent,

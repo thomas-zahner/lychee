@@ -63,7 +63,7 @@ use std::io::{self, BufRead, BufReader, ErrorKind};
 use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result};
-use clap::{Parser, crate_version};
+use clap::crate_version;
 use commands::{CommandParams, generate};
 use formatters::log::init_logging;
 use http::HeaderMap;
@@ -139,9 +139,12 @@ fn read_lines(file: &File) -> Result<Vec<String>> {
 /// the config file and the secrets file in that order.
 fn load_config() -> Result<LycheeOptions> {
     // Merge by precedence, parsed CLI args have highest precedence
-    let mut opts = LycheeOptions::parse();
+    let (mut opts, arg_matches) = LycheeOptions::parse();
 
-    init_logging(&opts.config.verbose(), &opts.config.mode());
+    dbg!(arg_matches.value_source("mode"));
+    dbg!(arg_matches.value_source("verbose"));
+
+    init_logging(&opts.config.verbose(), &opts.config.mode);
 
     if opts.config_files.is_empty() {
         // Fall back on trying to load the default config file from the current directory
