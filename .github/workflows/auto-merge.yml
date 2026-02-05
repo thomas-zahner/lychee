@@ -8,13 +8,8 @@ permissions:
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'lycheeverse/lychee'
+    # if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'lycheeverse/lychee'
     steps:
-      - name: Dependabot metadata
-        id: metadata
-        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Enable auto-merge for Dependabot PRs
         # Merge all updates as long as they pass CI. Includes minor and patch updates.
         run: gh pr merge --auto --merge "$PR_URL"
