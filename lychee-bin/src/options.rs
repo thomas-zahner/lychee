@@ -3,6 +3,7 @@ use crate::generate::GenerateMode;
 use crate::parse::parse_base;
 use crate::verbosity::Verbosity;
 use anyhow::{Context, Error, Result, anyhow};
+use clap::ArgMatches;
 use clap::builder::PossibleValuesParser;
 use clap::{Parser, builder::TypedValueParser};
 use const_format::{concatcp, formatcp};
@@ -371,6 +372,28 @@ impl LycheeOptions {
             .map(|raw_input| Input::new(raw_input, default_file_type, self.config.glob_ignore_case))
             .collect::<Result<_, _>>()
             .context("Cannot parse inputs from arguments")
+    }
+
+    /// Parse from `std::env::args_os()`, [exit][Error::exit] on error.
+    pub(crate) fn parse() -> (Self, ArgMatches) {
+        fn format_error<I: clap::CommandFactory>(err: clap::Error) -> clap::Error {
+            let mut cmd = I::command();
+            err.format(&mut cmd)
+        }
+
+        let mut matches = <Self as clap::CommandFactory>::command().get_matches();
+
+        let res = <Self as clap::FromArgMatches>::from_arg_matches_mut(&mut matches)
+            .map_err(format_error::<Self>);
+
+        match res {
+            Ok(s) => (s, matches),
+            Err(e) => {
+                // Since this is more of a development-time error, we aren't doing as fancy of a quit
+                // as `get_matches`
+                e.exit()
+            }
+        }
     }
 }
 

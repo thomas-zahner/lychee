@@ -63,7 +63,7 @@ use std::io::{self, BufRead, BufReader, ErrorKind};
 use std::path::PathBuf;
 
 use anyhow::{Context, Error, Result, bail};
-use clap::{Parser, crate_version};
+use clap::crate_version;
 use commands::{CommandParams, generate};
 use formatters::log::init_logging;
 use http::HeaderMap;
@@ -137,9 +137,18 @@ fn read_lines(file: &File) -> Result<Vec<String>> {
 /// Merge all provided config options into one.
 /// This includes a potential config file, command-line- and environment variables
 fn load_config() -> Result<LycheeOptions> {
-    let mut opts = LycheeOptions::parse();
+    // Merge by precedence, parsed CLI args have highest precedence
+    let (mut opts, arg_matches) = LycheeOptions::parse();
 
     init_logging(&opts.config.verbose, &opts.config.mode);
+
+    dbg!(arg_matches.value_source("mode"));
+    dbg!(arg_matches.value_source("retry_wait_time"));
+    dbg!(arg_matches.value_source("verbose"));
+    dbg!(arg_matches.value_source("timeout"));
+    dbg!(arg_matches.value_source("method"));
+    dbg!(arg_matches.value_source("extensions"));
+    dbg!(arg_matches.value_source("max_concurrency"));
 
     // Load a potentially existing config file and merge it into the config from
     // the CLI
