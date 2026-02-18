@@ -881,3 +881,10 @@ at your option.
 
 <br><hr>
 [🔼 Back to top](#back-to-top)
+
+# SARIF & JUnit reports
+
+https://docs.github.com/en/code-security/how-tos/scan-code-for-vulnerabilities/integrate-with-existing-tools/uploading-a-sarif-file-to-github#uploading-a-code-scanning-analysis-with-github-actions
+
+
+https://github.com/microsoft/sarif-tutorials/blob/main/docs/1-Introduction.md#what-is-sarif
