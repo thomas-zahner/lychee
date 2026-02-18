@@ -1,0 +1,19 @@
+name: SARIF test
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
