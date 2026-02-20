@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<testsuites name="lychee tests" tests="8" failures="1" errors="1" skipped="1"
+    time="16.082687" timestamp="2021-04-02T15:48:23">
+
+    <testsuite name="Tests.Registration" tests="8" failures="1" errors="1" skipped="1"
+        assertions="20" time="16.082687" timestamp="2021-04-02T15:48:23"
+        file="tests/registration.code">
+
+        <testcase name="testCase9" classname="Tests.Authentication" time="0.982" file=".github/workflows/sarif-test.yml" line="20">
+            <failure message="404 Not Found" type="AssertionError">
+                Full error message with details
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>

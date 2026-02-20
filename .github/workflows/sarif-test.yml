@@ -1,9 +1,10 @@
 name: SARIF test
 on:
   push:
+  pull_request:
 
 jobs:
-  build:
+  sarif:
     runs-on: ubuntu-latest
     permissions:
       # required for all workflows
@@ -17,3 +18,15 @@ jobs:
         with:
           # Path to SARIF file relative to the root of the repository
           sarif_file: results.sarif
+  junit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish JUnit test report
+        uses: mikepenz/action-junit-report@v6
+        with:
+          report_paths: "results.xml"
