@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites><testsuite name="lychee link check results">
+    <!-- Failed -->
+
+    <testcase name="Failed file:///home/thomas/Projects/lychee/assets/banner.ssvg" file="fixtures/TEST.md" line="2">
+        <system-out>file:///home/thomas/Projects/lychee/assets/banner.ssvg at 2:1 | Cannot find file: File not found. Check if file exists and path is correct</system-out>
+        <failure message="file:///home/thomas/Projects/lychee/assets/banner.ssvg at 2:1 | Cannot find file: File not found. Check if file exists and path is correct" />
+    </testcase>
+
+    <testcase name="Failed https://endler.dev/oh-no" file="fixtures/TEST.md" line="10">
+        <system-out>https://endler.dev/oh-no at 10:1 | Rejected status code: 404 Not Found (configurable with "accept" option)</system-out>
+        <failure message="https://endler.dev/oh-no at 10:1 | Rejected status code: 404 Not Found (configurable with &quot;accept&quot; option)" />
+    </testcase>
+
+    <testcase name="Failed https://en.wikipedia.org/huhhh" file="fixtures/TEST.md" line="7">
+        <system-out>https://en.wikipedia.org/huhhh at 7:1 | Rejected status code: 404 Not Found (configurable with "accept" option)</system-out>
+        <failure message="https://en.wikipedia.org/huhhh at 7:1 | Rejected status code: 404 Not Found (configurable with &quot;accept&quot; option)" />
+    </testcase>
+
+    <testcase name="Failed https://ldra.comm/" file="fixtures/TEST.md" line="13">
+        <system-out>https://ldra.comm/ at 13:1 | Network error: Connection failed. Check network connectivity and firewall settings (error sending request for url (https://ldra.comm/)): Connection failed. Check network connectivity and firewall settings</system-out>
+        <failure message="https://ldra.comm/ at 13:1 | Network error: Connection failed. Check network connectivity and firewall settings (error sending request for url (https://ldra.comm/)): Connection failed. Check network connectivity and firewall settings" />
+    </testcase>
+
+
+    <!-- Excluded -->
+
+    <testcase name="Excluded https://example.com/" file="fixtures/TEST.md" line="21">
+        <system-out>https://example.com/ at 21:1</system-out>
+        <skipped message="https://example.com/ at 21:1" />
+    </testcase>
+
+    <testcase name="Excluded http://example.com/" file="fixtures/TEST.md" line="20">
+        <system-out>http://example.com/ at 20:1</system-out>
+        <skipped message="http://example.com/ at 20:1" />
+    </testcase>
+
+    <testcase name="Excluded mailto:test@example.com" file="fixtures/TEST.md" line="25">
+        <system-out>mailto:test@example.com at 25:1</system-out>
+        <skipped message="mailto:test@example.com at 25:1" />
+    </testcase>
+
+    <testcase name="Excluded mailto:test2@example.com" file="fixtures/TEST.md" line="26">
+        <system-out>mailto:test2@example.com at 26:8</system-out>
+        <skipped message="mailto:test2@example.com at 26:8" />
+    </testcase>
+
+
+    <!-- Successful -->
+
+    <testcase name="Successful https://github.com/analysis-tools-dev/static-analysis/issues/350" file="fixtures/TEST.md" line="12">
+        <system-out>https://github.com/analysis-tools-dev/static-analysis/issues/350 at 12:29</system-out>
+    </testcase>
+
+    <testcase name="Successful https://licensebuttons.net/p/zero/1.0/88x31.png" file="fixtures/TEST.md" line="16">
+        <system-out>https://licensebuttons.net/p/zero/1.0/88x31.png at 16:2</system-out>
+    </testcase>
+
+    <testcase name="Successful file:///home/thomas/Projects/lychee/fixtures/TEST.md#awesome" file="fixtures/TEST.md" line="4">
+        <system-out>file:///home/thomas/Projects/lychee/fixtures/TEST.md#awesome at 4:1</system-out>
+    </testcase>
+
+    <testcase name="Successful https://creativecommons.org/publicdomain/zero/1.0/" file="fixtures/TEST.md" line="16">
+        <system-out>https://creativecommons.org/publicdomain/zero/1.0/ at 16:1</system-out>
+    </testcase>
+
+
+    <!-- Redirected -->
+
+    <testcase name="Redirected http://thomaszahner.ch/" file="fixtures/TEST.md" line="23">
+        <system-out>http://thomaszahner.ch/ at 23:1 | Redirect: Followed 1 redirect resolving to the final status of: OK. Redirects: http://thomaszahner.ch/ --[301]--> https://thomaszahner.ch/</system-out>
+    </testcase>
+</testsuite></testsuites>

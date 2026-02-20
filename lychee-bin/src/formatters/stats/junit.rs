@@ -1,4 +1,7 @@
+use std::collections::{HashMap, HashSet};
+
 use anyhow::Result;
+use lychee_lib::{InputSource, ResponseBody};
 
 use super::StatsFormatter;
 use crate::formatters::stats::{OutputStats, ResponseStats};
@@ -24,40 +27,69 @@ impl StatsFormatter for Junit {
 /// Unfortunately there is no official specification of this format,
 /// but there is documentation available at <https://github.com/testmoapp/junitxml>.
 /// Note that using a library would be overkill in this case.
-fn junit_xml(response_stats: ResponseStats) -> String {
-    let testcases = junit_testcases(response_stats);
+fn junit_xml(stats: ResponseStats) -> String {
+    let testcases = junit_testcases(stats);
     format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="lychee link check results">{testcases}</testsuites>
-"#
+<testsuites><testsuite name="lychee link check results">{testcases}</testsuite></testsuites>"#
     )
 }
 
-fn junit_testcases(response_stats: ResponseStats) -> String {
-    response_stats
-        .error_map
+fn junit_testcases(stats: ResponseStats) -> String {
+    let failures = junit_testcases_group(stats.error_map, Some("failure"), "Failed");
+    let skipped = junit_testcases_group(stats.excluded_map, Some("skipped"), "Excluded");
+    let sucesses = junit_testcases_group(stats.success_map, None, "Successful");
+    let redirected = junit_testcases_group(stats.redirect_map, None, "Redirected");
+
+    format!("{failures}\n\n{skipped}\n\n{sucesses}\n\n{redirected}\n")
+}
+
+fn junit_testcases_group(
+    map: HashMap<InputSource, HashSet<ResponseBody>>,
+    tag: Option<&str>,
+    reason: &str,
+) -> String {
+    if map.is_empty() {
+        return "".into();
+    }
+
+    let xml = map
         .into_iter()
-        .flat_map(|(s, b)| {
-            b.into_iter().map(move |r| {
-                let name = format!("Broken URL: {}", r.uri);
-                let message = format!("Check returned: {}", r.status.code_as_string());
-                let details = r.status.details().unwrap_or_default();
-                let line = r
+        .flat_map(|(source, b)| {
+            b.into_iter().map(move |response| {
+                let file = xml_property("file", &source);
+                let name = xml_property("name", format!("{reason} {}", response.uri));
+                let line = response
                     .span
-                    .map(|s| format!(r#" line="{}""#, s.line))
+                    .map(|s| xml_property("line", s.line))
+                    .unwrap_or_default();
+
+                let message = xml_property("message", &response);
+
+                let inner = tag
+                    .map(|tag| format!("\n        <{tag} {message} />",))
                     .unwrap_or_default();
 
                 format!(
                     r#"
-    <testcase name="{name}" file="{s}"{line}>
-        <failure message="{message}">{details}</failure>
-    </testcase>
-"#
+    <testcase {name} {file} {line}>
+        <system-out>{response}</system-out>{inner}
+    </testcase>"#
                 )
             })
         })
         .collect::<Vec<String>>()
-        .join("\n")
+        .join("\n");
+
+    let comment = format!("<!-- {reason} -->");
+    format!("\n    {comment}\n{xml}")
+}
+
+/// Write an XML property `key="value"` where the contents
+/// of `value` is escaped.
+fn xml_property<S: ToString>(key: &str, value: S) -> String {
+    let value = value.to_string().replace('"', "&quot;"); // only need to escape `"`
+    format!(r#"{key}="{value}""#)
 }
 
 #[cfg(test)]
@@ -69,6 +101,15 @@ mod tests {
         let formatter = Junit::new();
         let result = formatter.format(get_dummy_stats()).unwrap();
 
-        assert_eq!(result, r#""#);
+        assert_eq!(
+            result,
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<testsuites><testsuite name="lychee link check results">
+    <testcase name="Broken URI https://github.com/mre/idiomatic-rust-doesnt-exist-man" file="https://example.com/">
+        <failure message="https://github.com/mre/idiomatic-rust-doesnt-exist-man | 404 Not Found: Not Found">Not Found</failure>
+    </testcase>
+</testsuite></testsuites>
+"#
+        );
     }
 }
