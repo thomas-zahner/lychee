@@ -1,0 +1,57 @@
+{
+  "version": "2.1.0",
+  "$schema": "http://json.schemastore.org/sarif-2.1.0-rtm.4",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "lychee",
+          "informationUri": "https://github.com/lycheeverse/lychee/",
+          "rules": [
+            {
+              "id": "no-unused-vars",
+              "shortDescription": {
+                "text": "Broken link detected: 404 Not Found"
+              },
+              "helpUri": "https://github.com/lycheeverse/lychee/",
+              "properties": {
+                "category": "Variables"
+              }
+            }
+          ]
+        }
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": "results.sarif"
+          }
+        }
+      ],
+      "results": [
+        {
+          "level": "error",
+          "message": {
+            "text": "Broken link detected: 404 Not Found"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "results.sarif",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 3
+                }
+              }
+            }
+          ],
+          "ruleId": "no-unused-vars",
+          "ruleIndex": 0
+        }
+      ]
+    }
+  ]
+}
