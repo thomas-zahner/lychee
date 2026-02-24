@@ -3,7 +3,7 @@ use crate::{
     formatters::{
         get_response_formatter,
         host_stats::DetailedHostStats,
-        stats::{OutputStats, ResponseStats},
+        stats::{OutputStats, ResponseStats, write_responses},
     },
     options,
 };
@@ -61,12 +61,9 @@ impl Display for DetailedResponseStats {
         for (source, responses) in super::sort_stat_map(&stats.error_map) {
             // Using leading newlines over trailing ones (e.g. `writeln!`)
             // lets us avoid extra newlines without any additional logic.
-            write!(f, "\n\nErrors in {source}")?;
+            write!(f, "\n\nErrors in {source}\n")?;
 
-            for response in responses {
-                write!(f, "\n{}", response_formatter.format_response(response))?;
-            }
-
+            write_responses(f, &response_formatter, responses)?;
             write_stats(f, "Suggestions", source, stats.suggestion_map.get(source))?;
             write_stats(f, "Redirects", source, stats.redirect_map.get(source))?;
         }
@@ -144,7 +141,8 @@ mod tests {
 ⛔ Unsupported......1
 
 Errors in https://example.com/
-[404] https://github.com/mre/idiomatic-rust-doesnt-exist-man | 404 Not Found: Not Found
+1:1:[404] https://github.com/mre/idiomatic-rust-doesnt-exist-man | 404 Not Found: Not Found
+
 
 Suggestions in https://example.com/
 https://original.dev/ --> https://suggestion.dev/

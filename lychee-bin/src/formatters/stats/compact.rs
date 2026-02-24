@@ -10,7 +10,7 @@ use crate::formatters::{
     color::{BOLD_GREEN, BOLD_PINK, BOLD_YELLOW, DIM, NORMAL, color},
     get_response_formatter,
     host_stats::CompactHostStats,
-    stats::{OutputStats, ResponseStats},
+    stats::{OutputStats, ResponseStats, write_responses},
 };
 use crate::options;
 
@@ -44,24 +44,8 @@ impl Display for CompactResponseStats {
 
         for (source, responses) in super::sort_stat_map(&stats.error_map) {
             color!(f, BOLD_YELLOW, "[{}]:\n", source)?;
-            for response in responses {
-                writeln!(f, "{}", response_formatter.format_response(response))?;
-            }
-
-            if let Some(suggestions) = stats.suggestion_map.get(source) {
-                // Sort suggestions
-                let mut sorted_suggestions: Vec<_> = suggestions.iter().collect();
-                sorted_suggestions.sort_by(|a, b| {
-                    let (a, b) = (a.to_string().to_lowercase(), b.to_string().to_lowercase());
-                    numeric_sort::cmp(&a, &b)
-                });
-
-                writeln!(f, "\nℹ Suggestions")?;
-                for suggestion in sorted_suggestions {
-                    writeln!(f, "{suggestion}")?;
-                }
-            }
-
+            write_responses(f, &response_formatter, responses)?;
+            write_suggestions(f, stats, source)?;
             writeln!(f)?;
         }
 
@@ -86,6 +70,28 @@ impl Display for CompactResponseStats {
 
         Ok(())
     }
+}
+
+fn write_suggestions(
+    f: &mut fmt::Formatter<'_>,
+    stats: &ResponseStats,
+    source: &lychee_lib::InputSource,
+) -> Result<(), fmt::Error> {
+    Ok(
+        if let Some(suggestions) = stats.suggestion_map.get(source) {
+            // Sort suggestions
+            let mut sorted_suggestions: Vec<_> = suggestions.iter().collect();
+            sorted_suggestions.sort_by(|a, b| {
+                let (a, b) = (a.to_string().to_lowercase(), b.to_string().to_lowercase());
+                numeric_sort::cmp(&a, &b)
+            });
+
+            writeln!(f, "\nℹ Suggestions")?;
+            for suggestion in sorted_suggestions {
+                writeln!(f, "{suggestion}")?;
+            }
+        },
+    )
 }
 
 fn write_if_any(
@@ -149,7 +155,7 @@ mod tests {
             "Issues found in 1 input. Find details below.
 
 [https://example.com/]:
-[404] https://github.com/mre/idiomatic-rust-doesnt-exist-man | 404 Not Found: Not Found
+1:1: [404] https://github.com/mre/idiomatic-rust-doesnt-exist-man | 404 Not Found: Not Found
 
 ℹ Suggestions
 https://original.dev/ --> https://suggestion.dev/

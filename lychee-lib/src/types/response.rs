@@ -103,10 +103,6 @@ impl Display for ResponseBody {
         // Always write the URI
         write!(f, "{}", self.uri)?;
 
-        if let Some(span) = self.span {
-            write!(f, " at {span}")?;
-        }
-
         // Early return for OK status to avoid verbose output
         if matches!(self.status, Status::Ok(StatusCode::OK)) {
             return Ok(());

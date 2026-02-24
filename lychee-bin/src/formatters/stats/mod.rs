@@ -16,12 +16,15 @@ use serde::Serialize;
 
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Display,
+    fmt::{Display, Error, Formatter},
     fs,
     io::{Write, stdout},
 };
 
-use crate::{formatters::get_stats_formatter, options::Config};
+use crate::{
+    formatters::{get_stats_formatter, response::ResponseFormatter},
+    options::Config,
+};
 use anyhow::{Context, Result};
 use lychee_lib::{InputSource, ratelimit::HostStatsMap};
 
@@ -79,10 +82,39 @@ where
     entries
 }
 
+fn write_responses(
+    f: &mut Formatter<'_>,
+    response_formatter: &Box<dyn ResponseFormatter>,
+    responses: Vec<&lychee_lib::ResponseBody>,
+) -> Result<(), Error> {
+    let width = responses
+        .iter()
+        .filter_map(|r| Some(r.span?.to_string().len()))
+        .max()
+        .unwrap_or_default()
+        .saturating_add(":".chars().count());
+
+    for response in responses {
+        let span_info = if let Some(span) = response.span {
+            format!("{span}:")
+        } else {
+            String::new()
+        };
+
+        writeln!(
+            f,
+            "{span_info:<width$}{}",
+            response_formatter.format_response(response),
+        )?;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 fn get_dummy_stats() -> OutputStats {
     use http::StatusCode;
-    use lychee_lib::{Redirect, Redirects, ResponseBody, Status, ratelimit::HostStats};
+    use lychee_lib::{RawUriSpan, Redirect, Redirects, ResponseBody, Status, ratelimit::HostStats};
     use url::Url;
 
     use crate::formatters::suggestion::Suggestion;
@@ -95,7 +127,10 @@ fn get_dummy_stats() -> OutputStats {
                 .try_into()
                 .unwrap(),
             status: Status::Ok(StatusCode::NOT_FOUND),
-            span: None,
+            span: Some(RawUriSpan {
+                column: Some(1.try_into().unwrap()),
+                line: 1.try_into().unwrap(),
+            }),
         }]),
     )]);
 
