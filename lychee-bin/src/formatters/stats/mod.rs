@@ -1,6 +1,7 @@
 mod compact;
 mod detailed;
 mod json;
+mod junit;
 mod markdown;
 mod raw;
 mod response;
@@ -9,6 +10,7 @@ pub(crate) use compact::Compact;
 
 pub(crate) use detailed::Detailed;
 pub(crate) use json::Json;
+pub(crate) use junit::Junit;
 pub(crate) use markdown::Markdown;
 pub(crate) use raw::Raw;
 pub(crate) use response::ResponseStats;
@@ -95,6 +97,7 @@ fn get_dummy_stats() -> OutputStats {
                 .try_into()
                 .unwrap(),
             status: Status::Ok(StatusCode::NOT_FOUND),
+            span: None,
         }]),
     )]);
 
@@ -117,10 +120,11 @@ fn get_dummy_stats() -> OutputStats {
     });
 
     let redirect_map = HashMap::from([(
-        source,
+        source.clone(),
         HashSet::from([ResponseBody {
             uri: "https://redirected.dev".try_into().unwrap(),
             status: Status::Redirected(StatusCode::OK, redirects),
+            span: None,
         }]),
     )]);
 
@@ -176,7 +180,7 @@ mod tests {
     fn make_test_response(url_str: &str, source: InputSource) -> Response {
         let uri = Uri::from(make_test_url(url_str));
 
-        Response::new(uri, Status::Error(ErrorKind::EmptyUrl), source)
+        Response::new(uri, Status::Error(ErrorKind::EmptyUrl), source, None)
     }
 
     #[test]
