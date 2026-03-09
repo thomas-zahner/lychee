@@ -1555,7 +1555,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--no-progress")
             .arg("--exclude")
             .arg(excluded_url)
-            .arg("--")
             .arg("-")
             .assert()
             .stderr(contains(format!(
@@ -1803,7 +1802,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--verbose")
             .arg("--exclude")
             .arg("example.com")
-            .arg("--")
             .arg(&test_path)
             .assert()
             .success()
@@ -1829,7 +1827,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("https://example.com http://127.0.0.1:8080")
             .arg("--remap")
             .arg("https://example.org https://staging.example.com")
-            .arg("--")
             .arg("-")
             .write_stdin("https://example.com\nhttps://example.org\nhttps://example.net\n")
             .env_clear()
@@ -1847,7 +1844,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--dump")
             .arg("--remap")
             .arg("../../issues https://github.com/usnistgov/OSCAL/issues")
-            .arg("--")
             .arg("-")
             .write_stdin("../../issues\n")
             .env_clear()
@@ -1862,7 +1858,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--dump")
             .arg("--remap")
             .arg("https://example.com/(.*) http://example.org/$1")
-            .arg("--")
             .arg("-")
             .write_stdin("https://example.com/foo\n")
             .env_clear()
@@ -1874,16 +1869,34 @@ The config file should contain every possible key for documentation purposes."
     #[test]
     fn test_remap_named_capture() {
         cargo_bin_cmd!()
+            .arg("-vvv")
             .arg("--dump")
             .arg("--remap")
             .arg("https://github.com/(?P<org>.*)/(?P<repo>.*) https://gitlab.com/$org/$repo")
-            .arg("--")
             .arg("-")
             .write_stdin("https://github.com/lycheeverse/lychee\n")
             .env_clear()
             .assert()
             .success()
-            .stdout(contains("https://gitlab.com/lycheeverse/lychee"));
+            .stdout(contains("https://gitlab.com/lycheeverse/lychee"))
+            // It is debugged when URIs are remapped
+            .stderr(contains("Remapping https://github.com/lycheeverse/lychee --> https://gitlab.com/lycheeverse/lychee"));
+    }
+
+    #[test]
+    fn test_remap_named_invalid() {
+        cargo_bin_cmd!()
+            .arg("--remap")
+            .arg("https://example.com invalid")
+            .arg("-")
+            .write_stdin("https://example.com")
+            .env_clear()
+            .assert()
+            .failure()
+            // The error message should be descriptive and helpful
+            .stderr(contains("Error checking URL https://example.com/: Cannot parse URL to URI: Error remapping URL: `The remapping pattern produced an invalid URL: invalid/`"))
+            // The original URI is shown as root cause in stdout
+            .stdout(contains("The given URI is invalid: https://example.com/: Invalid URI format: 'https://example.com/'. Check URI syntax"));
     }
 
     #[test]
@@ -1897,7 +1910,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--exclude-path")
             .arg(excluded_path_2)
             .arg("--dump")
-            .arg("--")
             .arg(&test_path)
             .assert()
             .success();
@@ -1920,7 +1932,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--verbose")
             .arg("--exclude")
             .arg("example.*")
-            .arg("--")
             .arg("./TEST_DUMP_EXCLUDE.txt")
             .assert()
             .success()
@@ -1937,7 +1948,6 @@ The config file should contain every possible key for documentation purposes."
             .arg("--verbose")
             .arg("--exclude")
             .arg("example.*")
-            .arg("--")
             .arg("./NOT-A-REAL-TEST-FIXTURE.md")
             .assert()
             .failure()
