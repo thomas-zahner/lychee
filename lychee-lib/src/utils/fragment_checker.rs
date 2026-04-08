@@ -27,7 +27,7 @@ pub(crate) struct FragmentInput<'a> {
 impl<'a> FragmentInput<'a> {
     pub(crate) fn with_content_type(
         content_type: Option<&str>,
-        url: Url,
+        url: &Url,
         content: Cow<'a, str>,
     ) -> Option<Self> {
         let Some(content_type) = content_type else {
@@ -159,10 +159,7 @@ impl FragmentChecker {
         let FragmentInput { content, file_type } = input;
 
         if let Some(fd) = url.fragment_directive() {
-            return match fd.check(&content) {
-                Ok(_) => Ok(true), // TODO: cleanup
-                Err(_) => Ok(false),
-            };
+            return Ok(fd.check(&content).is_ok());
         }
 
         let extractor = match file_type {

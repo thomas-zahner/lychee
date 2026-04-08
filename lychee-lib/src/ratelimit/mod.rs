@@ -22,7 +22,6 @@ pub use host::{Host, HostKey, HostStats, HostStatsMap};
 use http::HeaderMap;
 pub use pool::{ClientMap, HostPool};
 use reqwest::Response;
-use url::Url;
 
 use crate::{ErrorKind, Result};
 
@@ -38,15 +37,12 @@ pub(crate) struct CacheableResponse {
     pub(crate) text: Option<String>,
     /// Response headers.
     pub(crate) headers: HeaderMap,
-    /// Final URL after any redirects.
-    pub(crate) url: Url,
 }
 
 impl CacheableResponse {
     async fn from_response(response: Response, needs_body: bool) -> Result<Self> {
         let status = response.status();
         let headers = response.headers().clone();
-        let url = response.url().clone();
         let text = if needs_body {
             Some(response.text().await.map_err(ErrorKind::ReadResponseBody)?)
         } else {
@@ -57,7 +53,6 @@ impl CacheableResponse {
             status,
             text,
             headers,
-            url,
         })
     }
 }

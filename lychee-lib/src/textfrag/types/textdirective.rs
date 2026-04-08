@@ -33,9 +33,7 @@ use percent_encoding::percent_decode_str;
 use std::cell::{Cell, RefCell, RefMut};
 
 use crate::textfrag::types::{
-    error::TextFragmentError,
-    status::{FragmentDirectiveStatus, TextDirectiveStatus},
-    TextDirectiveKind,
+    TextDirectiveKind, error::TextFragmentError, status::TextDirectiveStatus,
 };
 
 /// Text Directive represents the range of text in the web-page for highlighting to the user
@@ -49,7 +47,7 @@ use crate::textfrag::types::{
 ///
 /// NOTE: directives are percent-encoded by the caller
 /// Text Directive will return percent-decoded directives
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct TextDirective {
     /// Prefix directive - a contextual term to help identity text immediately before (the *start*)
     /// the directive ends with a hyphen (-) to separate from the *start* term
@@ -70,7 +68,6 @@ pub struct TextDirective {
     /// ends with a hyphen (-) to separate from the *end* term
     /// OPTIONAL
     suffix: String,
-    #[allow(dead_code)]
     /// Text Directive fragment source(for reference)
     raw_directive: String,
 
@@ -161,7 +158,7 @@ impl TextDirective {
 
     /// Returns mutable resultant string - used for updating the block content
     /// (for example, removing the prefix or suffix string from the content)
-    pub fn get_result_str_mut(&self) -> RefMut<String> {
+    pub fn get_result_str_mut(&'_ self) -> RefMut<'_, String> {
         self.resultant_str.borrow_mut()
     }
 
@@ -176,7 +173,6 @@ impl TextDirective {
     }
 
     /// Return the raw text directive as `String`
-    #[allow(dead_code)]
     pub fn get_text_directive(&self) -> String {
         self.raw_directive().to_owned()
     }
@@ -302,82 +298,6 @@ impl TextDirective {
                 TEXT_DIRECTIVE_REGEX.to_string(),
             ))
         }
-    }
-
-    /// [Internal] To be used for testing purposes only
-    #[allow(dead_code)]
-    fn check(&self, input: &str) -> Result<FragmentDirectiveStatus, TextFragmentError> {
-        let mut s_regex = r"(?mi)(?P<selection>".to_string();
-
-        // Construct regex with prefix, start and suffix - as below
-        // r"(?mi)(?P<selection>(?<=PREFIX)\sSTART\s(.|\n)+?(?P<last_word>\w+?)\s\b(?=SUFFIX))"
-        // last_word shall contain the END directive, if match found - this will be confirmed for range checking!
-        if !self.prefix.is_empty() {
-            s_regex.push_str(&format!(r"(?<={})\s", self.prefix.as_str()));
-        }
-
-        assert!(!self.start.is_empty());
-        s_regex.push_str(&self.start.clone());
-
-        // START AND END, without SUFFIX
-        if self.suffix.is_empty() && !self.end.is_empty() {
-            s_regex.push_str(&format!(r"\s(.|\n)+?\b{}", self.end));
-        }
-
-        if !self.suffix.is_empty() {
-            s_regex.push_str(&format!(
-                r"(.|\n)+?(?P<last_word>\w+?)\s\b(?={})",
-                self.suffix
-            ));
-        }
-
-        s_regex.push(')');
-        log::debug!("regex_str: {s_regex}");
-
-        let captures = if let Ok(regex) = Regex::new(&s_regex) {
-            if let Ok(captures) = regex.captures(input) {
-                captures
-            } else {
-                return Err(TextFragmentError::RegexCaptureError(
-                    self.raw_directive.clone(),
-                    s_regex.clone(),
-                ));
-            }
-        } else {
-            return Err(TextFragmentError::RegexConsructionError(s_regex.clone()));
-        };
-
-        if let Some(captures) = captures {
-            let selection = captures.name("selection");
-
-            if let Some(m) = selection {
-                let selection = m.as_str();
-                log::debug!("selected text: {selection}");
-            }
-
-            // If suffix is given, the regex will not include END explicitly but is checked as the
-            // *last_word* from the regex capture
-            if !self.suffix.is_empty() && !self.end.is_empty() {
-                let end_lowercase = self.end.clone().to_lowercase();
-                let lastword_lowercase = match captures.name("last_word") {
-                    Some(lw) => lw.as_str().to_lowercase(),
-                    None => {
-                        return Err(TextFragmentError::TextDirectiveNotFound(
-                            self.raw_directive.clone(),
-                        ))
-                    }
-                };
-
-                if !end_lowercase.eq(&lastword_lowercase) {
-                    return Err(TextFragmentError::TextDirectiveRangeError(
-                        end_lowercase,
-                        lastword_lowercase,
-                    ));
-                }
-            }
-        }
-
-        Ok(FragmentDirectiveStatus::Ok)
     }
 }
 

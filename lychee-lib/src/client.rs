@@ -934,30 +934,20 @@ mod tests {
             .client()
             .unwrap();
 
-        // Start only
-        let res = client
-            .check("https://developer.mozilla.org/en-US/docs/Web/URI/Fragment/Text_fragments#:~:text=without%20relying%20on%20the%20presence%20of%20IDs")
-            .await
-            .unwrap();
-        assert!(res.status().is_success());
+        let start_only = "https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment/Text_fragments#:~:text=without%20requiring%20the%20page%20author";
+        let start_and_end = "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#:~:text=linked%20URL,defining%20a%20value";
+        let prefix_and_start = "https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Fragment/Text_fragments#:~:text=by-,directly";
+        let start_with_suffix = "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#:~:text=linked%20URL's,-format";
 
-        // Start and End
-        let res = client
-            .check("https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#:~:text=linked%20URL,defining%20a%20value")
-            .await
-            .unwrap();
-        assert!(res.status().is_success());
-
-        // Prefix and start
-        let res = client
-            .check("https://example.com/#:~:text=asking-,for")
-            .await
-            .unwrap();
-        assert!(res.status().is_success());
-
-        // start with suffix
-        let res = client.check("https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#:~:text=linked%20URL's,-format").await.unwrap();
-        assert!(res.status().is_success());
+        for url in [
+            start_only,
+            start_and_end,
+            prefix_and_start,
+            start_with_suffix,
+        ] {
+            let res = client.check(url).await.unwrap();
+            assert!(res.status().is_success());
+        }
     }
 
     #[tokio::test]
@@ -991,54 +981,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn fail_fragment_directive_malformed_test() {
+    async fn test_invalid_fragments() {
         let client = ClientBuilder::builder()
             .include_fragments(true)
             .build()
             .client()
             .unwrap();
 
-        // Malformed Fragment directive delimiter - treated as if there is no fragment directive
-        // and will return the website status (as received from the server)
-        let res = client
-            .check("https://developer.mozilla.org/en-US/docs/Web/URI/Fragment/Text_fragments#:~text=without%20relying%20on%20the%20presence%20of%20DIs")
-            .await
-            .unwrap();
-        assert!(res.status().is_success());
-    }
+        let missing = "https://rust-lang.org/#:~:text=slow";
+        let partially_missing = "https://rust-lang.org/#:~:text=fast&text=slow";
+        let malformed_delimiter = "https://rust-lang.org/#:~text=fast";
 
-    #[tokio::test]
-    async fn fail_fragment_directive_check_fail_test() {
-        let client = ClientBuilder::builder()
-            .include_fragments(true)
-            .build()
-            .client()
-            .unwrap();
+        for url in [malformed_delimiter, missing, partially_missing] {
+            let res = client.check(url).await.unwrap();
 
-        let res = client
-            .check("https://developer.mozilla.org/en-US/docs/Web/URI/Fragment/Text_fragments#:~:text=without%20relying%20on%20the%20presence%20of%20DIs")
-            .await
-            .unwrap();
-        assert!(res.status().is_error());
-    }
-
-    #[tokio::test]
-    async fn fail_fragment_directive_partial_success_test() {
-        let client = ClientBuilder::builder()
-            .include_fragments(true)
-            .build()
-            .client()
-            .unwrap();
-
-        let res = client
-            .check("https://developer.mozilla.org/en-US/docs/Web/URI/Fragment/Text_fragments#:~:text=without%20relying%20on%20the%20presence%20of%20DIs&text=without%20relying%20on%20the%20presence%20of%20IDs&text=allow-,linking,web,-document")
-            .await
-            .unwrap();
-        assert!(res.status().is_error());
-        assert_eq!(
-            res.status(),
-            &Status::Error(ErrorKind::TextFragmentPartialSuccess)
-        );
+            assert!(res.status().is_error());
+            assert!(matches!(
+                res.status(),
+                Status::Error(ErrorKind::InvalidFragment(_))
+            ));
+        }
     }
 
     #[tokio::test]

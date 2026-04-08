@@ -85,7 +85,6 @@ impl BlockElementContent {
         elt.push_str(name);
     }
 
-    #[allow(dead_code)]
     /// Returns the element name
     fn get_name(&self) -> String {
         self.element_name.borrow().to_string()
@@ -96,7 +95,6 @@ impl BlockElementContent {
         self.start_line_number.borrow().set(line_number);
     }
 
-    #[allow(dead_code)]
     /// Getter for block content's start line number
     pub fn get_start_line(&self) -> u64 {
         self.start_line_number.borrow().get()
@@ -107,7 +105,6 @@ impl BlockElementContent {
         self.end_line_number.borrow().set(line_number);
     }
 
-    #[allow(dead_code)]
     /// Getter for block content's end line number
     pub fn get_end_line(&self) -> u64 {
         self.end_line_number.borrow().get()

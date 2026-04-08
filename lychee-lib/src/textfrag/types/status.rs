@@ -4,21 +4,6 @@ use std::{
     fmt::{Display, Formatter, Result},
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-/// Defines the `FragmentDirective` check status
-pub enum FragmentDirectiveStatus {
-    /// Text Fragment search was successful for all directives
-    Ok,
-}
-
-impl Display for FragmentDirectiveStatus {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        match self {
-            FragmentDirectiveStatus::Ok => write!(f, "Ok"),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Eq)]
 /// `FragmentDirective` check error status
 pub enum FragmentDirectiveError {

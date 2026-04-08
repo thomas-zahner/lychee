@@ -167,7 +167,7 @@ impl WebsiteChecker {
 
                 let fragment_input = FragmentInput::with_content_type(
                     content_type,
-                    request_url.clone(),
+                    &request_url,
                     Cow::Borrowed(&content),
                 );
 

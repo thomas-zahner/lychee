@@ -24,7 +24,6 @@ pub enum TextFragmentError {
     RegexCaptureError(String, String),
 
     /// No match is found by the text delimiter regex
-    #[allow(dead_code)]
     #[error("Regex no match found error: {0}")]
     RegexNoMatchFoundError(String),
 
@@ -45,7 +44,6 @@ pub enum TextFragmentError {
     TextDirectiveRangeError(String, String),
 
     /// Returned when partial match is found
-    #[allow(dead_code)]
     #[error("Partial text directive match found!")]
     TextDirectivePartialMatchFoundError,
 }

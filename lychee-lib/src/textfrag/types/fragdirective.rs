@@ -25,21 +25,16 @@ use url::Url;
 
 use crate::textfrag::{
     extract::FragmentDirectiveTokenizer,
-    types::{
-        FragmentDirectiveError, FragmentDirectiveStatus, TextDirective, TextDirectiveStatus,
-        TextFragmentError,
-    },
+    types::{FragmentDirectiveError, TextDirective, TextDirectiveStatus, TextFragmentError},
 };
 
 /// Fragment directive delimiter constant
 pub const FRAGMENT_DIRECTIVE_DELIMITER: &str = ":~:";
 
 /// Fragment Directive defines the base url and collection of Text Directives
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct FragmentDirective {
-    #[allow(dead_code)]
-    url: Option<Url>,
-    text_directives: RefCell<Vec<TextDirective>>,
+    pub(crate) text_directives: RefCell<Vec<TextDirective>>,
 }
 
 impl FragmentDirective {
@@ -49,7 +44,6 @@ impl FragmentDirective {
     }
 
     /// Returns a mutable list of all the processed text directives for the `[url:Url]`
-    #[allow(dead_code)]
     pub fn text_directives_mut(&self) -> Vec<TextDirective> {
         self.text_directives.borrow_mut().to_owned()
     }
@@ -99,7 +93,6 @@ impl FragmentDirective {
         if let Ok(text_directives) = FragmentDirective::build_text_directives(fragment) {
             return Some(Self {
                 text_directives: RefCell::new(text_directives),
-                url: None,
             });
         };
 
@@ -116,7 +109,7 @@ impl FragmentDirective {
 
     /// Check the presence of given directive on the (web site response) input
     ///
-    /// A fragment directive shall have multiple Text Directives included - the check will validate
+    /// A fragment directive shall have multiple text directives included - the check will validate
     /// each of the text directives
     ///
     /// # Errors
@@ -124,20 +117,11 @@ impl FragmentDirective {
     /// Return an error if
     /// - No match is found
     /// - Suffix error (spec instructs the fragment SHALL be upto **Suffix** and this error is returned if this condition is violated)
-    pub fn check(&self, input: &str) -> Result<FragmentDirectiveStatus, FragmentDirectiveError> {
+    pub fn check(&self, input: &str) -> Result<(), FragmentDirectiveError> {
         self.check_fragment_directive(input)
     }
 
-    /// Fragment Directive checker method - takes website response text and text directives
-    /// as input and returns Directive check status
-    ///
-    /// # Errors
-    /// - `TextDirectiveNotFound`, if text directive match fails
-    // fn check_fragment_directive(&self, buf: &str) -> Result<TextFragmentStatus, TextFragmentError> {
-    fn check_fragment_directive(
-        &self,
-        buf: &str,
-    ) -> Result<FragmentDirectiveStatus, FragmentDirectiveError> {
+    fn check_fragment_directive(&self, buf: &str) -> Result<(), FragmentDirectiveError> {
         let mut map = HashMap::new();
         let fd_checker = FragmentDirectiveTokenizer::new(self.text_directives());
 
@@ -184,7 +168,7 @@ impl FragmentDirective {
             return Err(FragmentDirectiveError::NotFoundError);
         }
 
-        Ok(FragmentDirectiveStatus::Ok)
+        Ok(())
     }
 }
 
@@ -199,13 +183,13 @@ mod tests {
 
     const MULTILINE_INPUT: &str = "Is there a way to deal with repeated instances of this split in a block of text? FOr instance:\
      \"This is just\na simple sentence. Here is some additional stuff. This is just\na simple sentence. And here is some more stuff.\
-      This is just\na simple sentence. \". Currently it matches the entire string, rather than and therefore each instance. prefix   
-    
+      This is just\na simple sentence. \". Currently it matches the entire string, rather than and therefore each instance. prefix
+
     start (immediately after the prefix and this) is start the statement and continue till the end. the suffix shall come into effect \
     as well.there is going to be a test for starting is mapped or not.
-    
+
     actual end is this new line.
-    
+
     type
     Hints at the linked URL's format with a MIME type. No built-in functionality.
 
@@ -259,7 +243,7 @@ mod tests {
         const INPUT: &str = r#"
                 <html>
                     <body>
-                        <p>This is a paragraph with some inline <code>https://example.com</code> and a normal 
+                        <p>This is a paragraph with some inline <code>https://example.com</code> and a normal
                             <a style="display:none;" href="https://example.org">example</a>
                         </p>
                     </body>
@@ -374,12 +358,10 @@ mod tests {
     #[test]
     fn test_fragment_directive_as_url() {
         let url = Url::parse(&("https://example.com/#test".to_owned() + TEST_FRAGMENT)).unwrap();
-        assert!(url.has_fragment_directive());
+        let fd = url
+            .fragment_directive()
+            .expect("Expected to have directive");
 
-        let fd = FragmentDirective::from_url(&url);
-        assert!(fd.unwrap().text_directives().len() == 2);
-
-        let fd = url.fragment_directive();
-        assert!(fd.unwrap().text_directives().len() == 2);
+        assert!(fd.text_directives().len() == 2);
     }
 }
