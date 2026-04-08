@@ -285,7 +285,7 @@ impl FileChecker {
             return ErrorKind::InvalidFragment(uri.clone()).into();
         }
 
-        match FragmentInput::from_path(path).await {
+        match FragmentInput::from_local_path(path).await {
             Ok(input) => match self.fragment_checker.check(input, &uri.url).await {
                 Ok(true) => Status::Ok(StatusCode::OK),
                 Ok(false) => ErrorKind::InvalidFragment(uri.clone()).into(),

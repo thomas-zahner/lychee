@@ -462,11 +462,6 @@ pub(crate) struct Config {
     #[serde(default)]
     pub(crate) include_fragments: bool,
 
-    /// Enable the checking of Text Fragments in links
-    #[arg(long)]
-    #[serde(default)]
-    pub(crate) include_text_fragments: bool,
-
     /// Website timeout in seconds from connect to response finished
     ///
     /// [default: 20]
@@ -837,7 +832,6 @@ impl Config {
                 host_stats,
                 include_fragments,
                 include_mail,
-                include_text_fragments,
                 include_verbatim,
                 include_wikilinks,
                 insecure,

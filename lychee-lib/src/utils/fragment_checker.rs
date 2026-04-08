@@ -9,20 +9,48 @@ use std::{
 use crate::{
     Result,
     extract::{html::html5gum::extract_html_fragments, markdown::extract_markdown_fragments},
+    textfrag::UrlExt,
     types::{ErrorKind, FileType},
 };
 use percent_encoding::percent_decode_str;
 use tokio::{fs, sync::Mutex};
 use url::Url;
 
-/// Holds the content and file type of the fragment input.
 pub(crate) struct FragmentInput<'a> {
+    /// The content retrieved from the server when requesting the [`Url`]
     pub content: Cow<'a, str>,
+
+    /// What file type the content can be interpreted as
     pub file_type: FileType,
 }
 
-impl FragmentInput<'_> {
-    pub(crate) async fn from_path(path: &Path) -> Result<Self> {
+impl<'a> FragmentInput<'a> {
+    pub(crate) fn with_content_type(
+        content_type: Option<&str>,
+        url: Url,
+        content: Cow<'a, str>,
+    ) -> Option<Self> {
+        let Some(content_type) = content_type else {
+            return None;
+        };
+
+        let file_type = match content_type {
+            ct if ct.starts_with("text/html") => FileType::Html,
+            ct if ct.starts_with("text/markdown") => FileType::Markdown,
+            ct if ct.starts_with("text/plain") => {
+                let path = Path::new(url.path());
+                match path.extension() {
+                    Some(ext) if ext.eq_ignore_ascii_case("md") => FileType::Markdown,
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        };
+
+        Some(Self { content, file_type })
+    }
+
+    pub(crate) async fn from_local_path(path: &Path) -> Result<Self> {
         let content = fs::read_to_string(path)
             .await
             .map_err(|err| ErrorKind::ReadFileInput(err, path.to_path_buf()))?;
@@ -128,9 +156,15 @@ impl FragmentChecker {
             return Ok(true);
         }
 
-        let url_without_frag = Self::remove_fragment(url.clone());
-
         let FragmentInput { content, file_type } = input;
+
+        if let Some(fd) = url.fragment_directive() {
+            return match fd.check(&content) {
+                Ok(_) => Ok(true), // TODO: cleanup
+                Err(_) => Ok(false),
+            };
+        }
+
         let extractor = match file_type {
             FileType::Markdown => extract_markdown_fragments,
             FileType::Html => extract_html_fragments,
@@ -141,6 +175,7 @@ impl FragmentChecker {
         };
 
         let fragment_candidates = FragmentBuilder::new(fragment, url, file_type)?;
+        let url_without_frag = Self::remove_fragment(url.clone());
         match self.cache.lock().await.entry(url_without_frag) {
             Entry::Vacant(entry) => {
                 let file_frags = extractor(&content);

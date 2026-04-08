@@ -301,8 +301,6 @@ pub struct ClientBuilder {
     /// Enable the checking of fragments in links.
     include_fragments: bool,
 
-    /// Enable the checking of text fragment in a website
-    include_text_fragments: bool,
     /// Enable the checking of wikilinks in markdown files.
     /// Note that base must not be `None` if you set this `true`.
     include_wikilinks: bool,
@@ -390,7 +388,6 @@ impl ClientBuilder {
             self.accepted,
             github_client,
             self.require_https,
-            self.include_text_fragments,
             self.plugin_request_chain,
             self.include_fragments,
             Arc::new(host_pool),
@@ -932,7 +929,7 @@ mod tests {
     #[tokio::test]
     async fn test_fragment_directive() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
@@ -966,7 +963,7 @@ mod tests {
     #[tokio::test]
     async fn test_ending_prefix() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
@@ -981,7 +978,7 @@ mod tests {
     #[tokio::test]
     async fn test_multiple_directives() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
@@ -996,7 +993,7 @@ mod tests {
     #[tokio::test]
     async fn fail_fragment_directive_malformed_test() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
@@ -1013,7 +1010,7 @@ mod tests {
     #[tokio::test]
     async fn fail_fragment_directive_check_fail_test() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
@@ -1028,7 +1025,7 @@ mod tests {
     #[tokio::test]
     async fn fail_fragment_directive_partial_success_test() {
         let client = ClientBuilder::builder()
-            .include_text_fragments(true)
+            .include_fragments(true)
             .build()
             .client()
             .unwrap();
