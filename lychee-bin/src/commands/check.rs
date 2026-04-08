@@ -15,7 +15,7 @@ use lychee_lib::RequestError;
 use lychee_lib::Status;
 use lychee_lib::archive::Archive;
 use lychee_lib::waiter::{WaitGroup, WaitGuard};
-use lychee_lib::{Client, ErrorKind, Request, Response, Uri};
+use lychee_lib::{Client, ErrorKind, Request, Response};
 
 use crate::formatters::stats::ResponseStats;
 use crate::formatters::suggestion::Suggestion;
@@ -226,7 +226,7 @@ async fn request_channel_task(
                 &cache,
                 cache_exclude_status.clone(),
                 request,
-                accept.clone(),
+                &accept,
             )
             .await;
 
@@ -276,7 +276,7 @@ async fn handle(
     cache: &Cache,
     cache_exclude_status: HashSet<StatusCode>,
     request: Result<Request, RequestError>,
-    accept: HashSet<StatusCode>,
+    accept: &HashSet<StatusCode>,
 ) -> Result<Response, ErrorKind> {
     // Note that the RequestError cases bypass the cache.
     let request = match request {
@@ -284,66 +284,11 @@ async fn handle(
         Err(e) => return e.into_response(),
     };
 
-    let uri = request.uri.clone();
+    let check = async |request: Request| check_url(client, request).await;
 
-    // First check the persistent disk-based cache
-    if let Some(v) = cache.get(&uri) {
-        // Found a cached request
-        // Overwrite cache status in case the URI is excluded in the
-        // current run
-        let status = if client.is_excluded(&uri) {
-            Status::Excluded
-        } else {
-            // Can't impl `Status::from(v.value().status)` here because the
-            // `accepted` status codes might have changed from the previous run
-            // and they may have an impact on the interpretation of the status
-            // code.
-            client.host_pool().record_persistent_cache_hit(&uri);
-            Status::from_cache_status(v.value().status, &accept)
-        };
-
-        return Ok(Response::new(
-            uri.clone(),
-            status,
-            request.source.into(),
-            request.span,
-            None,
-        ));
-    }
-
-    let response = check_url(client, request).await;
-
-    // - Never cache filesystem access as it is fast already so caching has no benefit.
-    // - Skip caching unsupported URLs as they might be supported in a future run.
-    // - Skip caching excluded links; they might not be excluded in the next run.
-    // - Skip caching links for which the status code has been explicitly excluded from the cache.
-    let status = response.status();
-    if ignore_cache(&uri, status, &cache_exclude_status) {
-        return Ok(response);
-    }
-
-    cache.insert(uri, status.into());
-    Ok(response)
-}
-
-/// Returns `true` if the response should be ignored in the cache.
-///
-/// The response should be ignored if:
-/// - The URI is a file URI.
-/// - The status is excluded.
-/// - The status is unsupported.
-/// - The status is unknown.
-/// - The status code is excluded from the cache.
-fn ignore_cache(uri: &Uri, status: &Status, cache_exclude_status: &HashSet<StatusCode>) -> bool {
-    let status_code_excluded = status
-        .code()
-        .is_some_and(|code| cache_exclude_status.contains(&code));
-
-    uri.is_file()
-        || status.is_excluded()
-        || status.is_unsupported()
-        || status.is_unknown()
-        || status_code_excluded
+    cache
+        .handle(client, cache_exclude_status, accept, request, check)
+        .await
 }
 
 fn get_failed_urls(stats: &mut ResponseStats) -> Vec<(InputSource, Url)> {
@@ -366,10 +311,9 @@ fn get_failed_urls(stats: &mut ResponseStats) -> Vec<(InputSource, Url)> {
 
 #[cfg(test)]
 mod tests {
-    use http::StatusCode;
-    use lychee_lib::{ClientBuilder, ErrorKind, Uri};
-
     use super::*;
+    use crate::parse::parse_remaps;
+    use lychee_lib::{ClientBuilder, ErrorKind, StatusCodeSelector, Uri};
 
     #[tokio::test]
     async fn test_invalid_url() {
@@ -382,54 +326,27 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_cache_by_default() {
-        assert!(!ignore_cache(
-            &Uri::try_from("https://[::1]").unwrap(),
-            &Status::Ok(StatusCode::OK),
-            &HashSet::default()
-        ));
-    }
-
-    #[test]
-    // Cache is ignored for file URLs
-    fn test_cache_ignore_file_urls() {
-        assert!(ignore_cache(
-            &Uri::try_from("file:///home").unwrap(),
-            &Status::Ok(StatusCode::OK),
-            &HashSet::default()
-        ));
-    }
-
-    #[test]
-    // Cache is ignored for unsupported status
-    fn test_cache_ignore_unsupported_status() {
-        assert!(ignore_cache(
-            &Uri::try_from("https://[::1]").unwrap(),
-            &Status::Unsupported(ErrorKind::EmptyUrl),
-            &HashSet::default()
-        ));
-    }
-
-    #[test]
-    // Cache is ignored for unknown status
-    fn test_cache_ignore_unknown_status() {
-        assert!(ignore_cache(
-            &Uri::try_from("https://[::1]").unwrap(),
-            &Status::UnknownStatusCode(StatusCode::IM_A_TEAPOT),
-            &HashSet::default()
-        ));
-    }
-
-    #[test]
-    fn test_cache_ignore_excluded_status() {
-        // Cache is ignored for excluded status codes
-        let exclude = HashSet::from([StatusCode::OK]);
-
-        assert!(ignore_cache(
-            &Uri::try_from("https://[::1]").unwrap(),
-            &Status::Ok(StatusCode::OK),
-            &exclude
-        ));
+    #[tokio::test]
+    async fn test_cache_uses_remapped_uri_as_key() {
+        let remaps =
+            parse_remaps(&["https://wikipedia.org/ https://wikipedia.org/404".to_string()])
+                .unwrap();
+        let client = ClientBuilder::builder()
+            .remaps(remaps)
+            .build()
+            .client()
+            .unwrap();
+        let cache = Cache::new();
+        let response = handle(
+            &client,
+            &cache,
+            StatusCodeSelector::empty().into(),
+            Ok(Request::try_from("https://wikipedia.org/").unwrap()),
+            &StatusCodeSelector::default_accepted().into(),
+        )
+        .await
+        .unwrap();
+        assert!(response.status().is_error());
+        assert!(cache.contains_key(&Uri::try_from("https://wikipedia.org/404").unwrap()));
     }
 }
