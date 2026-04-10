@@ -187,7 +187,7 @@ mod tests {
             FragmentDirective {
                 text_directives: vec![TextDirective {
                     start: "repeated".into(),
-                    end: "block".into(),
+                    end: Some("block".into()),
                     search_kind: TextDirectiveKind::Start,
                     ..Default::default()
                 }]
@@ -216,9 +216,9 @@ mod tests {
             fd,
             FragmentDirective {
                 text_directives: vec![TextDirective {
-                    prefix: "a".into(),
+                    prefix: Some("a".into()),
                     start: "paragraph".into(),
-                    end: "inline".into(),
+                    end: Some("inline".into()),
                     search_kind: TextDirectiveKind::Prefix,
                     ..Default::default()
                 }]
@@ -238,7 +238,7 @@ mod tests {
             fd,
             FragmentDirective {
                 text_directives: vec![TextDirective {
-                    prefix: "with".into(),
+                    prefix: Some("with".into()),
                     start: "repeated".into(),
                     search_kind: TextDirectiveKind::Prefix,
                     ..Default::default()
@@ -260,7 +260,7 @@ mod tests {
             FragmentDirective {
                 text_directives: vec![TextDirective {
                     start: "linked URL".into(),
-                    suffix: "'s format".into(),
+                    suffix: Some("'s format".into()),
                     search_kind: TextDirectiveKind::Start,
                     ..Default::default()
                 }]
@@ -280,9 +280,9 @@ mod tests {
             fd,
             FragmentDirective {
                 text_directives: vec![TextDirective {
-                    prefix: "with".into(),
+                    prefix: Some("with".into()),
                     start: "repeated".into(),
-                    suffix: "instance".into(),
+                    suffix: Some("instance".into()),
                     search_kind: TextDirectiveKind::Prefix,
                     ..Default::default()
                 }]
@@ -302,10 +302,10 @@ mod tests {
             fd,
             FragmentDirective {
                 text_directives: vec![TextDirective {
-                    prefix: "with".into(),
+                    prefix: Some("with".into()),
                     start: "repeated".into(),
-                    suffix: "or".into(),
-                    end: "mapped".into(),
+                    suffix: Some("or".into()),
+                    end: Some("mapped".into()),
                     search_kind: TextDirectiveKind::Prefix,
                     ..Default::default()
                 }]
@@ -327,16 +327,16 @@ mod tests {
             fd.text_directives,
             vec![
                 TextDirective {
-                    prefix: "prefix".into(),
+                    prefix: Some("prefix".into()),
                     start: "start".into(),
-                    end: "end".into(),
-                    suffix: "suffix".into(),
+                    end: Some("end".into()),
+                    suffix: Some("suffix".into()),
                     search_kind: TextDirectiveKind::Prefix,
                     ..Default::default()
                 },
                 TextDirective {
                     start: "start".into(),
-                    suffix: "suffix-with-dashes".into(),
+                    suffix: Some("suffix-with-dashes".into()),
                     ..Default::default()
                 },
             ]

@@ -365,31 +365,31 @@ impl FragmentDirectiveTokenizer {
             TextDirectiveKind::Prefix => {
                 start_bounded_word = true;
                 // end_bounded_word = true;
-                &directive.prefix
+                directive.prefix.as_ref().expect("Invalid state") // TODO
             }
             TextDirectiveKind::Start => {
-                if directive.prefix.is_empty() {
+                if directive.prefix.is_none() {
                     start_bounded_word = true;
                 } else {
                     max_word_distance = 1;
                 }
 
-                if !directive.end.is_empty() || directive.suffix.is_empty() {
+                if directive.end.is_some() || directive.suffix.is_none() {
                     end_bounded_word = true;
                 }
                 &directive.start
             }
             TextDirectiveKind::End => {
                 start_bounded_word = true;
-                if directive.suffix.is_empty() {
+                if directive.suffix.is_none() {
                     end_bounded_word = true;
                 }
-                &directive.end
+                directive.end.as_ref().expect("Invalid state") // TODO
             }
             TextDirectiveKind::Suffix => {
                 end_bounded_word = true;
                 max_word_distance = 1;
-                &directive.suffix
+                &directive.suffix.as_ref().expect("Invalid state") // TODO
             }
         };
 
@@ -415,15 +415,18 @@ impl FragmentDirectiveTokenizer {
                 false
             }
             TextDirectiveKind::Start => {
-                if !directive.end.is_empty() {
+                if !directive.end.is_none() {
                     next_directive = TextDirectiveKind::End;
-                } else if !directive.suffix.is_empty() {
+                    false
+                } else if !directive.suffix.is_none() {
                     next_directive = TextDirectiveKind::Suffix;
+                    false
+                } else {
+                    true
                 }
-                directive.end.is_empty() && directive.suffix.is_empty()
             }
             TextDirectiveKind::End => {
-                let no_suffix = directive.suffix.is_empty();
+                let no_suffix = directive.suffix.is_none();
                 if !no_suffix {
                     next_directive = TextDirectiveKind::Suffix;
                 }
@@ -441,12 +444,12 @@ impl FragmentDirectiveTokenizer {
     /// This method confirms the correctness of the start word. If the word validation fails,
     /// false is returned, instructing the caller to restart the search from the end offset
     fn validate_start(&self, start: usize, end: usize, directive: &TextDirective) -> bool {
-        if !directive.prefix.is_empty() {
+        if let Some(prefix) = &directive.prefix {
             let found_content = self.get_block_content(Some(start..end));
 
             let mut prefix_last_word = "";
             if start == directive.next_offset {
-                prefix_last_word = FragmentDirectiveTokenizer::find_last_word(&directive.prefix);
+                prefix_last_word = FragmentDirectiveTokenizer::find_last_word(prefix);
             }
 
             let start_first_word = FragmentDirectiveTokenizer::find_first_word(&directive.start);
@@ -460,7 +463,7 @@ impl FragmentDirectiveTokenizer {
             {
                 log::warn!(
                     "content mismatch - looks partial extraction attempted \
-                    {found_content_first_word} vs {prefix_last_word}{start_first_word}"
+                                {found_content_first_word} vs {prefix_last_word}{start_first_word}"
                 );
                 return false;
             }
@@ -475,12 +478,16 @@ impl FragmentDirectiveTokenizer {
         let start_offset = directive.next_offset;
 
         if start == start_offset {
-            let end_last_word = if directive.end.is_empty() {
-                FragmentDirectiveTokenizer::find_last_word(&directive.start)
-            } else {
-                FragmentDirectiveTokenizer::find_last_word(&directive.end)
+            let end_last_word = match &directive.end {
+                Some(end) => FragmentDirectiveTokenizer::find_last_word(end),
+                None => FragmentDirectiveTokenizer::find_last_word(&directive.start),
             };
-            let suffix_first_word = FragmentDirectiveTokenizer::find_first_word(&directive.suffix);
+
+            let suffix_first_word = directive
+                .suffix
+                .as_ref()
+                .map(|s| FragmentDirectiveTokenizer::find_first_word(s))
+                .unwrap_or_default();
 
             let found_content = self.get_block_content(Some(start_offset..end));
             let content_last_word = FragmentDirectiveTokenizer::find_first_word(&found_content);
@@ -561,8 +568,9 @@ impl FragmentDirectiveTokenizer {
                                     continue;
                                 }
 
-                                let suffix_replaced_text =
-                                    directive.result_str.replace(&directive.suffix, "");
+                                let suffix_replaced_text = directive
+                                    .result_str
+                                    .replace(directive.suffix.as_ref().expect("Invalid state"), ""); // TODO
                                 directive.result_str = suffix_replaced_text;
                             }
                         }

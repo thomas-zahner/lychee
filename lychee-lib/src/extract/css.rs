@@ -49,11 +49,11 @@ static CSS_URL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         url\s*\(                    # Match 'url(' with optional whitespace
         \s*                         # Optional whitespace
         (?:                         # Non-capturing group for the URL
-            "(?P<double>[^"]*)"     # Double-quoted URL
+            "(?<double>[^"]*)"     # Double-quoted URL
             |                       # OR
-            '(?P<single>[^']*)'     # Single-quoted URL
+            '(?<single>[^']*)'     # Single-quoted URL
             |                       # OR
-            (?P<unquoted>[^)]+)     # Unquoted URL (anything until ')')
+            (?<unquoted>[^)]+)     # Unquoted URL (anything until ')')
         )
         \s*                         # Optional whitespace
         \)                          # Match closing ')'

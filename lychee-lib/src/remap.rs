@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_remap_named_capture() {
         let input = Uri::try_from("https://example.com/1/2/3").unwrap();
-        let input_pattern = Regex::new("https://example.com/.*?/(?P<foo>.*?)/.*").unwrap();
+        let input_pattern = Regex::new("https://example.com/.*?/(?<foo>.*?)/.*").unwrap();
         let replacement = Uri::try_from("https://example.com/foo/$foo/bar").unwrap();
 
         let remaps = Remaps::new(vec![(input_pattern, replacement.to_string())]);

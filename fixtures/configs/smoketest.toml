@@ -76,7 +76,7 @@ header = { X-Foo = "Bar", X-Bar = "Baz" }
 remap = [
     "https://example.com http://example.invalid",
     "https://example.com/(.*) http://example.org/$1",
-    "https://github.com/(?P<org>.*)/(?P<repo>.*) https://gitlab.com/$org/$repo",
+    "https://github.com/(?<org>.*)/(?<repo>.*) https://gitlab.com/$org/$repo",
 ]
 
 # Base URL or website root directory to check relative URLs.

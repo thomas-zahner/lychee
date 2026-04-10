@@ -1903,7 +1903,7 @@ The config file should contain every possible key for documentation purposes."
         cargo_bin_cmd!()
             .arg("--dump")
             .arg("--remap")
-            .arg("https://github.com/(?P<org>.*)/(?P<repo>.*) https://gitlab.com/$org/$repo")
+            .arg("https://github.com/(?<org>.*)/(?<repo>.*) https://gitlab.com/$org/$repo")
             .arg("-")
             .write_stdin("https://github.com/lycheeverse/lychee\n")
             .env_clear()
