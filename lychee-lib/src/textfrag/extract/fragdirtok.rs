@@ -145,9 +145,9 @@ use crate::textfrag::types::BlockElementContent;
 /// website content and check for the presence of the Text Directives
 ///
 /// Block elements are constructed during the tokenization process - nested
-/// block elements are supported   
+/// block elements are supported
 #[derive(Clone, Default, Debug)]
-pub struct FragmentDirectiveTokenizer {
+pub(crate) struct FragmentDirectiveTokenizer {
     /// The name of current block element the tokenizer is processing
     recent_block_element: RefCell<String>,
     /// Lists the nested block element names - element is popped when the block ends
@@ -155,7 +155,7 @@ pub struct FragmentDirectiveTokenizer {
     /// block element content store
     content: RefCell<BlockElementContent>,
     /// Text Directives list (constructed from the URL's fragment directive)
-    pub directives: RefCell<Vec<TextDirective>>,
+    pub(crate) directives: RefCell<Vec<TextDirective>>,
 }
 
 /// Block content access methods
@@ -165,15 +165,15 @@ impl FragmentDirectiveTokenizer {
     }
 
     fn set_block_start_line(&self, line_number: u64) {
-        self.content.borrow().set_start_line(line_number);
+        self.content.borrow_mut().set_start_line(line_number);
     }
 
     fn set_block_end_line(&self, line_number: u64) {
-        self.content.borrow().set_end_line(line_number);
+        self.content.borrow_mut().set_end_line(line_number);
     }
 
-    fn set_block_name(&self, name: &str) {
-        self.content.borrow().set_name(name);
+    fn set_block_name(&self, name: String) {
+        self.content.borrow_mut().set_element_name(name);
     }
 
     fn get_block_content(&self, range: Option<Range<usize>>) -> String {
@@ -250,7 +250,7 @@ impl TokenSink for FragmentDirectiveTokenizer {
                             self.block_elements.borrow_mut().push(tag_name.clone());
                             self.set_active_element(&tag_name);
 
-                            self.set_block_name(&tag_name);
+                            self.set_block_name(tag_name);
                             self.set_block_start_line(line_number);
                         }
                     }
@@ -300,7 +300,7 @@ impl TokenSink for FragmentDirectiveTokenizer {
 impl FragmentDirectiveTokenizer {
     #[must_use]
     /// Construct `FragmentDirectiveTokenizer` using the list of `TextDirective`
-    pub const fn new(text_directives: Vec<TextDirective>) -> Self {
+    pub(crate) const fn new(text_directives: Vec<TextDirective>) -> Self {
         Self {
             recent_block_element: RefCell::new(String::new()),
             block_elements: RefCell::new(Vec::new()),
@@ -310,7 +310,7 @@ impl FragmentDirectiveTokenizer {
     }
 
     /// Returns the list of text directives tokenizer processes
-    pub fn get_text_directives(&self) -> Vec<TextDirective> {
+    pub(crate) fn get_text_directives(&self) -> Vec<TextDirective> {
         self.directives.borrow().clone().clone()
     }
 
@@ -318,7 +318,7 @@ impl FragmentDirectiveTokenizer {
     /// element visibility flag
     fn update_element_visibility(&self, attr: &Attribute) {
         let local_name = attr.name.local.to_string().to_lowercase();
-        if local_name.eq("style") {
+        if local_name == "style" {
             let attr_val = attr.value.to_string();
             assert!(attr_val.find(':').is_some());
 
@@ -463,10 +463,10 @@ impl FragmentDirectiveTokenizer {
             let found_content_first_word =
                 FragmentDirectiveTokenizer::find_first_word(&found_content);
 
-            if !format!("{prefix_last_word}{start_first_word}") //, prefix_last_word, start_first_word)
+            if format!("{prefix_last_word}{start_first_word}") //, prefix_last_word, start_first_word)
                 .escape_default()
                 .to_string()
-                .eq(found_content_first_word)
+                != found_content_first_word
             {
                 log::warn!(
                     "content mismatch - looks partial extraction attempted \
@@ -498,7 +498,7 @@ impl FragmentDirectiveTokenizer {
             let word_found = format!("{end_last_word}{suffix_first_word}") //, end_last_word, suffix_first_word)
                 .escape_default()
                 .to_string();
-            if !word_found.eq(content_last_word) {
+            if word_found != content_last_word {
                 log::warn!(
                     "content mismatch - looks partial extraction attempted \
                    {content_last_word} vs {end_last_word}{suffix_first_word}"
@@ -519,7 +519,7 @@ impl FragmentDirectiveTokenizer {
         let mut end_directives_loop = false;
 
         while !end_directives_loop {
-            let search_kind = directive.search_kind(); //.borrow().clone();
+            let search_kind = directive.search_kind();
 
             let (start_bounded_word, end_bounded_word, allowed_word_distance, search_str) =
                 FragmentDirectiveTokenizer::gather_directive_flags(search_kind, directive);
@@ -527,7 +527,7 @@ impl FragmentDirectiveTokenizer {
                 FragmentDirectiveTokenizer::find_next_directives(directive);
             end_directives_loop = end_finding_directives;
 
-            directive.set_status(&TextDirectiveStatus::NotFound);
+            directive.set_status(TextDirectiveStatus::NotFound);
 
             let start_offset = directive.next_offset();
             if let Some(status) = self.find_in_content(
@@ -571,9 +571,8 @@ impl FragmentDirectiveTokenizer {
                                     continue;
                                 }
 
-                                let suffix_replaced_text = directive
-                                    .get_result_str_mut()
-                                    .replace(directive.suffix(), "");
+                                let suffix_replaced_text =
+                                    directive.get_result_str().replace(directive.suffix(), "");
                                 directive.clear_result_str();
                                 directive.append_result_str(&suffix_replaced_text);
                             }
@@ -588,7 +587,7 @@ impl FragmentDirectiveTokenizer {
 
                         // We've matched all the text directives...time to exit!
                         if next_directive == search_kind {
-                            directive.set_status(&TextDirectiveStatus::Completed);
+                            directive.set_status(TextDirectiveStatus::Completed);
                             return;
                         }
                     }
@@ -608,7 +607,7 @@ impl FragmentDirectiveTokenizer {
                         }
 
                         // reset the search kind, status and offset fields
-                        directive.set_status(&TextDirectiveStatus::NotFound);
+                        directive.set_status(TextDirectiveStatus::NotFound);
                         directive.reset();
                         return;
                     }
@@ -627,7 +626,6 @@ impl FragmentDirectiveTokenizer {
 
 #[cfg(test)]
 mod tests {
-
     use crate::textfrag::types::{FragmentDirective, FragmentDirectiveError, TextDirectiveStatus};
 
     const HTML_INPUT: &str = "<html>
@@ -638,7 +636,7 @@ mod tests {
         https://foo.com and http://bar.com/some/path
         Something else
         <a href=\"https://baz.org\">example link inside pre</a>
-        And some more random text's prefix is here 
+        And some more random text's prefix is here
         // Read HTML from standard input
         // let mut chunk = ByteTendril::new();
         // io::stdin().read_to_tendril(&mut chunk).unwrap();
@@ -658,7 +656,7 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            let res = fd.text_directives();
+            let res = fd.text_directives.clone();
             assert_eq!(res.len(), 1);
             assert_eq!(res[0].prefix(), "par");
             assert_eq!(res[0].start(), "agraph");
@@ -679,7 +677,7 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            let res = fd.text_directives();
+            let res = fd.text_directives.clone();
             assert_eq!(res.len(), 2);
             assert_eq!(res[0].prefix(), "par");
             assert_eq!(res[0].start(), "agraph");
@@ -705,7 +703,7 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            let res = fd.text_directives();
+            let res = fd.text_directives.clone();
             assert_eq!(res.len(), 2);
             assert_eq!(res[0].prefix(), "par");
             assert_eq!(res[0].start(), "agraph");

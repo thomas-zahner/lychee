@@ -30,7 +30,6 @@
 //! ```
 use fancy_regex::Regex;
 use percent_encoding::percent_decode_str;
-use std::cell::{Cell, RefCell, RefMut};
 
 use crate::textfrag::types::{
     TextDirectiveKind, error::TextFragmentError, status::TextDirectiveStatus,
@@ -48,7 +47,7 @@ use crate::textfrag::types::{
 /// NOTE: directives are percent-encoded by the caller
 /// Text Directive will return percent-decoded directives
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct TextDirective {
+pub(crate) struct TextDirective {
     /// Prefix directive - a contextual term to help identity text immediately before (the *start*)
     /// the directive ends with a hyphen (-) to separate from the *start* term
     /// starts on the word boundary
@@ -71,19 +70,18 @@ pub struct TextDirective {
     /// Text Directive fragment source(for reference)
     raw_directive: String,
 
-    // For Tokenizer state machine...
     /// Text Directive validation Status - updated by the tokenizer state machine
-    status: RefCell<TextDirectiveStatus>,
+    status: TextDirectiveStatus,
     /// Current search string - this will be dynamically updated by the tokenizer state machine
-    search_kind: RefCell<TextDirectiveKind>,
+    search_kind: TextDirectiveKind,
     /// start offset to start searching `**search_str**` on the block element content
-    next_offset: Cell<usize>,
+    next_offset: usize,
     /// Tokenizer resultant string - contains the found content
-    resultant_str: RefCell<String>,
+    result_str: String,
 }
 
 /// `TextDirective` delimiter
-pub const TEXT_DIRECTIVE_DELIMITER: &str = "text=";
+pub(crate) const TEXT_DIRECTIVE_DELIMITER: &str = "text=";
 
 /// Regex to match `TextDirective` in `[url:Url]`'s fragment
 const TEXT_DIRECTIVE_REGEX: &str = r"(?s)^text=(?:\s*(?P<prefix>[^,&-]*)-\s*[,$]?\s*)?(?:\s*(?P<start>[^-&,]*)\s*)(?:\s*,\s*(?P<end>[^,&-]*)\s*)?(?:\s*,\s*-(?P<suffix>[^,&-]*)\s*)?$";
@@ -91,23 +89,23 @@ const TEXT_DIRECTIVE_REGEX: &str = r"(?s)^text=(?:\s*(?P<prefix>[^,&-]*)-\s*[,$]
 /// Text Directive getters and setters
 impl TextDirective {
     /// returns the current directive search kind
-    pub fn search_kind(&self) -> TextDirectiveKind {
-        self.search_kind.borrow().to_owned()
+    pub(crate) fn search_kind(&self) -> TextDirectiveKind {
+        self.search_kind
     }
 
     /// Setter for marking the next directive search kind
-    pub fn set_search_kind(&self, kind: TextDirectiveKind) {
-        *self.search_kind.borrow_mut() = kind;
+    pub(crate) fn set_search_kind(&mut self, kind: TextDirectiveKind) {
+        self.search_kind = kind;
     }
 
     /// Getter to know the next directive's search start offset
-    pub fn next_offset(&self) -> usize {
-        self.next_offset.get()
+    pub(crate) fn next_offset(&self) -> usize {
+        self.next_offset
     }
 
     /// Setter for updating the next directive search offset
-    pub fn set_next_offset(&self, offset: usize) {
-        self.next_offset.set(offset);
+    pub(crate) fn set_next_offset(&mut self, offset: usize) {
+        self.next_offset = offset;
     }
 
     /// Resets the `TextDirective` state information.
@@ -117,88 +115,72 @@ impl TextDirective {
     /// shall span over and be found across blocks.
     ///
     /// For rest of the directive state, reset will force restart of the search.
-    pub fn reset(&self) {
+    pub(crate) fn reset(&mut self) {
         // reset the search kind, and offset fields
         self.set_next_offset(0);
-        self.set_status(&TextDirectiveStatus::NotFound);
+        self.set_status(TextDirectiveStatus::NotFound);
 
         // End directive can span across blocks (rest other directives MUST be on the same block)
         // If the next directive is End, we retain the resultant string found so far
         if TextDirectiveKind::End != self.search_kind() {
-            self.resultant_str.borrow_mut().clear();
+            self.result_str.clear();
 
             // Restart the search
-            *self.search_kind.borrow_mut() = TextDirectiveKind::Start;
+            self.search_kind = TextDirectiveKind::Start;
             if !self.prefix().is_empty() {
-                *self.search_kind.borrow_mut() = TextDirectiveKind::Prefix;
+                self.search_kind = TextDirectiveKind::Prefix;
             }
         }
     }
 
     /// Update resultant string content (padding with whitespace, for readability)
-    pub fn append_result_str(&self, content: &str) {
-        let mut res_str = self.resultant_str.borrow_mut();
-
-        if !res_str.is_empty() {
-            res_str.push(' ');
-        }
-        res_str.push_str(content);
+    pub(crate) fn append_result_str(&mut self, content: &str) {
+        self.result_str.push_str(&format!("{content} "));
     }
 
     /// Clears the resultant string
-    pub fn clear_result_str(&self) {
-        self.resultant_str.borrow_mut().clear();
+    pub(crate) fn clear_result_str(&mut self) {
+        self.result_str.clear();
     }
 
     /// Getter for the resultant string - based on the directive search results
     /// from the block content
-    pub fn get_result_str(&self) -> String {
-        self.resultant_str.borrow().to_string()
-    }
-
-    /// Returns mutable resultant string - used for updating the block content
-    /// (for example, removing the prefix or suffix string from the content)
-    pub fn get_result_str_mut(&'_ self) -> RefMut<'_, String> {
-        self.resultant_str.borrow_mut()
+    pub(crate) fn get_result_str(&self) -> String {
+        self.result_str.to_string()
     }
 
     /// Getter for the `TextDirective` status
-    pub fn get_status(&self) -> TextDirectiveStatus {
-        *self.status.borrow()
+    pub(crate) fn get_status(&self) -> TextDirectiveStatus {
+        self.status
     }
 
     /// Setter for the `TextDirective` status
-    pub fn set_status(&self, status: &TextDirectiveStatus) {
-        *self.status.borrow_mut() = *status;
-    }
-
-    /// Return the raw text directive as `String`
-    pub fn get_text_directive(&self) -> String {
-        self.raw_directive().to_owned()
+    pub(crate) fn set_status(&mut self, status: TextDirectiveStatus) {
+        self.status = status;
     }
 
     /// Getter for the prefix directive
-    pub fn prefix(&self) -> &str {
+    pub(crate) fn prefix(&self) -> &str {
         self.prefix.as_str()
     }
 
     /// Getter for the start directive
-    pub fn start(&self) -> &str {
+    pub(crate) fn start(&self) -> &str {
         self.start.as_str()
     }
 
     /// Getter for end directive
-    pub fn end(&self) -> &str {
+    pub(crate) fn end(&self) -> &str {
         self.end.as_str()
     }
 
     /// Getter for the suffix directive
-    pub fn suffix(&self) -> &str {
+    pub(crate) fn suffix(&self) -> &str {
         self.suffix.as_str()
     }
 
     /// Returns the raw directive, as in the `[url:Url]`'s fragment string
-    pub fn raw_directive(&self) -> &str {
+    pub(crate) fn raw_directive(&self) -> &str {
         self.raw_directive.as_str()
     }
 }
@@ -233,7 +215,7 @@ impl TextDirective {
     /// - `TextFragmentError::StartDirectiveMissingError`, if the *start* is missing in the directives
     /// - `TextFragmentError::PercentDecodeError`, if the percent decode fails for the directive
     ///
-    pub fn from_fragment_as_str(fragment: &str) -> Result<TextDirective, TextFragmentError> {
+    pub(crate) fn from_fragment_as_str(fragment: &str) -> Result<TextDirective, TextFragmentError> {
         // If text directive delimiter (text=) is not found, return error
         if !fragment.contains(TEXT_DIRECTIVE_DELIMITER) {
             return Err(TextFragmentError::NotTextDirective);
@@ -278,10 +260,10 @@ impl TextDirective {
                     end,
                     suffix,
                     raw_directive: fragment.to_owned(),
-                    status: RefCell::new(TextDirectiveStatus::NotStarted),
+                    status: TextDirectiveStatus::NotStarted,
                     search_kind: search_kind.into(),
-                    next_offset: Cell::new(0),
-                    resultant_str: RefCell::new(String::new()),
+                    next_offset: 0,
+                    result_str: String::new(),
                 })
             } else {
                 Err(TextFragmentError::RegexCaptureError(

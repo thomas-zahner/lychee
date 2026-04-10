@@ -18,7 +18,7 @@
 //!    }
 //! }
 //! ```
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
 use html5ever::tokenizer::{BufferQueue, Tokenizer, TokenizerOpts};
 use url::Url;
@@ -29,25 +29,15 @@ use crate::textfrag::{
 };
 
 /// Fragment directive delimiter constant
-pub const FRAGMENT_DIRECTIVE_DELIMITER: &str = ":~:";
+pub(crate) const FRAGMENT_DIRECTIVE_DELIMITER: &str = ":~:";
 
 /// Fragment Directive defines the base url and collection of Text Directives
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub struct FragmentDirective {
-    pub(crate) text_directives: RefCell<Vec<TextDirective>>,
+pub(crate) struct FragmentDirective {
+    pub(crate) text_directives: Vec<TextDirective>,
 }
 
 impl FragmentDirective {
-    /// Returns all the processed text directives for the `[url:Url]`
-    pub fn text_directives(&self) -> Vec<TextDirective> {
-        self.text_directives.borrow().to_owned()
-    }
-
-    /// Returns a mutable list of all the processed text directives for the `[url:Url]`
-    pub fn text_directives_mut(&self) -> Vec<TextDirective> {
-        self.text_directives.borrow_mut().to_owned()
-    }
-
     /// Extract Text Directives, from the Url fragment string, and return a list
     /// of `TextDirective`'s as vector
     ///
@@ -89,10 +79,10 @@ impl FragmentDirective {
     ///
     /// If no fragment directive is found in the `[url:Url]`'s fragment, returns None
     #[must_use]
-    pub fn from_fragment_as_str(fragment: &str) -> Option<FragmentDirective> {
+    pub(crate) fn from_fragment_as_str(fragment: &str) -> Option<FragmentDirective> {
         if let Ok(text_directives) = FragmentDirective::build_text_directives(fragment) {
             return Some(Self {
-                text_directives: RefCell::new(text_directives),
+                text_directives: text_directives,
             });
         };
 
@@ -102,7 +92,7 @@ impl FragmentDirective {
     /// Finds the Fragment Directive from the Url
     /// If the fragment directive is not found, return None
     #[must_use]
-    pub fn from_url(url: &Url) -> Option<FragmentDirective> {
+    pub(crate) fn from_url(url: &Url) -> Option<FragmentDirective> {
         let fragment = url.fragment()?;
         FragmentDirective::from_fragment_as_str(fragment)
     }
@@ -117,13 +107,13 @@ impl FragmentDirective {
     /// Return an error if
     /// - No match is found
     /// - Suffix error (spec instructs the fragment SHALL be upto **Suffix** and this error is returned if this condition is violated)
-    pub fn check(&self, input: &str) -> Result<(), FragmentDirectiveError> {
+    pub(crate) fn check(&self, input: &str) -> Result<(), FragmentDirectiveError> {
         self.check_fragment_directive(input)
     }
 
     fn check_fragment_directive(&self, buf: &str) -> Result<(), FragmentDirectiveError> {
         let mut map = HashMap::new();
-        let fd_checker = FragmentDirectiveTokenizer::new(self.text_directives());
+        let fd_checker = FragmentDirectiveTokenizer::new(self.text_directives.clone());
 
         let tok = Tokenizer::new(
             fd_checker,
@@ -204,12 +194,12 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
+            assert!(fd.text_directives.len() == 1);
             assert!(
-                fd.text_directives()[0].start().eq(&"repeated".to_string())
-                    && fd.text_directives()[0].search_kind() == TextDirectiveKind::Start
+                fd.text_directives[0].start() == "repeated"
+                    && fd.text_directives[0].search_kind() == TextDirectiveKind::Start
             );
-            assert!(fd.text_directives()[0].prefix().is_empty());
+            assert!(fd.text_directives[0].prefix().is_empty());
 
             let results = fd.check(MULTILINE_INPUT);
             assert!(results.is_ok());
@@ -225,11 +215,11 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
-            assert_eq!(fd.text_directives()[0].start(), "repeated");
-            assert_eq!(fd.text_directives()[0].end(), "block");
+            assert!(fd.text_directives.len() == 1);
+            assert_eq!(fd.text_directives[0].start(), "repeated");
+            assert_eq!(fd.text_directives[0].end(), "block");
             assert_eq!(
-                fd.text_directives()[0].search_kind(),
+                fd.text_directives[0].search_kind(),
                 TextDirectiveKind::Start
             );
 
@@ -256,10 +246,10 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
-            assert_eq!(fd.text_directives()[0].prefix(), "a");
-            assert_eq!(fd.text_directives()[0].start(), "paragraph");
-            assert_eq!(fd.text_directives()[0].end(), "inline");
+            assert!(fd.text_directives.len() == 1);
+            assert_eq!(fd.text_directives[0].prefix(), "a");
+            assert_eq!(fd.text_directives[0].start(), "paragraph");
+            assert_eq!(fd.text_directives[0].end(), "inline");
 
             let res = fd.check(INPUT);
             assert!(res.is_ok());
@@ -275,11 +265,11 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
-            assert_eq!(fd.text_directives()[0].prefix(), "with");
-            assert_eq!(fd.text_directives()[0].start(), "repeated");
+            assert!(fd.text_directives.len() == 1);
+            assert_eq!(fd.text_directives[0].prefix(), "with");
+            assert_eq!(fd.text_directives[0].start(), "repeated");
             assert_eq!(
-                fd.text_directives()[0].search_kind(),
+                fd.text_directives[0].search_kind(),
                 TextDirectiveKind::Prefix
             );
 
@@ -297,11 +287,11 @@ mod tests {
         assert!(fd.is_some());
 
         if let Some(fd) = fd {
-            assert_eq!(fd.text_directives().len(), 1);
-            assert_eq!(fd.text_directives()[0].start(), "linked URL");
-            assert_eq!(fd.text_directives()[0].suffix(), "'s format");
+            assert_eq!(fd.text_directives.len(), 1);
+            assert_eq!(fd.text_directives[0].start(), "linked URL");
+            assert_eq!(fd.text_directives[0].suffix(), "'s format");
             assert_eq!(
-                fd.text_directives()[0].search_kind(),
+                fd.text_directives[0].search_kind(),
                 TextDirectiveKind::Start
             );
 
@@ -318,12 +308,12 @@ mod tests {
         let fd = FragmentDirective::from_fragment_as_str(&directive_str);
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
-            assert_eq!(fd.text_directives()[0].prefix(), "with");
-            assert_eq!(fd.text_directives()[0].start(), "repeated");
-            assert_eq!(fd.text_directives()[0].suffix(), "instance");
+            assert!(fd.text_directives.len() == 1);
+            assert_eq!(fd.text_directives[0].prefix(), "with");
+            assert_eq!(fd.text_directives[0].start(), "repeated");
+            assert_eq!(fd.text_directives[0].suffix(), "instance");
             assert_eq!(
-                fd.text_directives()[0].search_kind(),
+                fd.text_directives[0].search_kind(),
                 TextDirectiveKind::Prefix
             );
 
@@ -340,13 +330,13 @@ mod tests {
         let fd = FragmentDirective::from_fragment_as_str(&directive_str);
 
         if let Some(fd) = fd {
-            assert!(fd.text_directives().len() == 1);
-            assert_eq!(fd.text_directives()[0].prefix(), "with");
-            assert_eq!(fd.text_directives()[0].start(), "repeated");
-            assert_eq!(fd.text_directives()[0].suffix(), "or");
-            assert_eq!(fd.text_directives()[0].end(), "mapped");
+            assert!(fd.text_directives.len() == 1);
+            assert_eq!(fd.text_directives[0].prefix(), "with");
+            assert_eq!(fd.text_directives[0].start(), "repeated");
+            assert_eq!(fd.text_directives[0].suffix(), "or");
+            assert_eq!(fd.text_directives[0].end(), "mapped");
             assert_eq!(
-                fd.text_directives()[0].search_kind(),
+                fd.text_directives[0].search_kind(),
                 TextDirectiveKind::Prefix
             );
 
@@ -362,6 +352,6 @@ mod tests {
             .fragment_directive()
             .expect("Expected to have directive");
 
-        assert!(fd.text_directives().len() == 2);
+        assert!(fd.text_directives.len() == 2);
     }
 }

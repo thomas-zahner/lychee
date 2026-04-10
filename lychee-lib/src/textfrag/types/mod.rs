@@ -12,8 +12,8 @@ pub mod url;
 
 pub use blockcontent::*;
 pub use error::*;
-pub use fragdirective::*;
+pub(crate) use fragdirective::*;
 pub use kind::*;
 pub use status::*;
-pub use textdirective::*;
-pub use url::*;
+pub(crate) use textdirective::*;
+pub(crate) use url::*;

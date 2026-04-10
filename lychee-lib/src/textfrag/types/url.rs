@@ -4,7 +4,7 @@ use crate::textfrag::types::FragmentDirective;
 
 /// Fragment Directive extension trait
 /// We will use the extension trait pattern to extend [`url::Url`] to support the text fragment feature
-pub trait UrlExt {
+pub(crate) trait UrlExt {
     /// Constructs `FragmentDirective`, if the URL contains a fragment and has fragment directive delimiter
     fn fragment_directive(&self) -> Option<FragmentDirective>;
 }
@@ -37,9 +37,9 @@ mod test_fs_tree {
             .expect("Expected fragment directive to be present");
 
         assert!(
-            fd.text_directives().len() == 2
-                && fd.text_directives()[0].prefix().eq("prefix")
-                && fd.text_directives()[0].search_kind() == TextDirectiveKind::Prefix
+            fd.text_directives.len() == 2
+                && fd.text_directives[0].prefix() == "prefix"
+                && fd.text_directives[0].search_kind() == TextDirectiveKind::Prefix
         );
     }
 

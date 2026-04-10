@@ -31,11 +31,7 @@
 //! let status = block_content.find("the", 0, true, false, -1);
 //! assert_eq!(status, Some(TextDirectiveStatus::Found((1, 1))));
 //! ```
-use std::{
-    borrow::{Borrow, BorrowMut},
-    cell::{Cell, RefCell},
-    ops::Range,
-};
+use std::ops::Range;
 
 use crate::textfrag::types::status::TextDirectiveStatus;
 
@@ -43,21 +39,21 @@ use crate::textfrag::types::status::TextDirectiveStatus;
 #[derive(Clone, Debug, Default)]
 pub struct BlockElementContent {
     /// Block element name
-    element_name: RefCell<String>,
+    element_name: String,
     /// Block starting line number
-    start_line_number: Cell<u64>,
+    start_line_number: u64,
     /// Block ending line number
-    end_line_number: Cell<u64>,
+    end_line_number: u64,
     /// Block Content
-    content: RefCell<String>,
+    content: String,
     /// Visibility flag (default is true)
-    visible: Cell<bool>,
+    visible: bool,
     /// Control code - to compute word count (inline)
-    new_word: Cell<bool>,
+    new_word: bool,
     /// word count
-    nwords: Cell<usize>,
+    nwords: usize,
     /// [TODO] Indicate if the content is right to left
-    _rtl: Cell<bool>,
+    _rtl: bool,
 }
 
 impl BlockElementContent {
@@ -65,55 +61,33 @@ impl BlockElementContent {
     /// Construct block element content object
     pub const fn new() -> Self {
         Self {
-            element_name: RefCell::new(String::new()),
-            content: RefCell::new(String::new()),
-            start_line_number: Cell::new(0),
-            end_line_number: Cell::new(0),
-            visible: Cell::new(true),
-            _rtl: Cell::new(false),
-            new_word: Cell::new(false),
-            nwords: Cell::new(0),
+            element_name: String::new(),
+            content: String::new(),
+            start_line_number: 0,
+            end_line_number: 0,
+            visible: true,
+            _rtl: false,
+            new_word: false,
+            nwords: 0,
         }
     }
 
-    /// name of the current block element
-    pub fn set_name(&self, name: &str) {
-        let mut elt = self.element_name.borrow_mut();
-        if !elt.is_empty() {
-            elt.clear();
-        }
-        elt.push_str(name);
+    pub(crate) fn set_element_name(&mut self, name: String) {
+        self.element_name = name;
     }
 
-    /// Returns the element name
-    fn get_name(&self) -> String {
-        self.element_name.borrow().to_string()
+    pub(crate) fn set_start_line(&mut self, line_number: u64) {
+        self.start_line_number = line_number;
     }
 
-    /// Block Start line number
-    pub fn set_start_line(&self, line_number: u64) {
-        self.start_line_number.borrow().set(line_number);
-    }
-
-    /// Getter for block content's start line number
-    pub fn get_start_line(&self) -> u64 {
-        self.start_line_number.borrow().get()
-    }
-
-    /// Block ending line number
-    pub fn set_end_line(&self, line_number: u64) {
-        self.end_line_number.borrow().set(line_number);
-    }
-
-    /// Getter for block content's end line number
-    pub fn get_end_line(&self) -> u64 {
-        self.end_line_number.borrow().get()
+    pub(crate) fn set_end_line(&mut self, line_number: u64) {
+        self.end_line_number = line_number;
     }
 
     /// updates the block content - the method also identifies the words while
     /// processing and maintains word count for the block element
     /// content
-    pub fn set_content(&mut self, c: char) {
+    pub(crate) fn set_content(&mut self, c: char) {
         // skip the control codes
         if c.is_control() {
             return;
@@ -125,57 +99,54 @@ impl BlockElementContent {
             is_word = true;
         }
 
-        let mut nwords = self.nwords.borrow().get();
+        let mut nwords = self.nwords;
 
         // If previous content input was a whitespace and the current is not, we've a new word
         // increment nwords count
-        if !self.new_word.borrow().get() && is_word {
+        if !self.new_word && is_word {
             nwords += 1;
         }
 
         let buf = c.escape_default().collect::<String>();
-        self.content.borrow_mut().push_str(&buf);
+        self.content.push_str(&buf);
 
-        self.nwords.borrow_mut().set(nwords);
-        self.new_word.borrow_mut().set(is_word);
+        self.nwords = nwords;
+        self.new_word = is_word;
     }
 
     /// Returns the word count of the block content
-    pub fn word_count(&self) -> usize {
-        self.nwords.borrow().get()
+    pub(crate) fn word_count(&self) -> usize {
+        self.nwords
     }
 
     fn get_content_by_range(&self, start: usize, end: usize) -> String {
-        let content = self
-            .content
-            .borrow()
+        self.content
             .clone()
             .split_whitespace()
             .collect::<Vec<&str>>()[start..=end]
-            .join(" ");
-        content
+            .join(" ")
     }
 
     /// Returns the block content over a given word offset range
     /// if range is None, the entire block content is returned
-    pub fn get_content(&self, range: Option<Range<usize>>) -> String {
+    pub(crate) fn get_content(&self, range: Option<Range<usize>>) -> String {
         if let Some(r) = range {
             self.get_content_by_range(r.start, r.end)
         } else {
-            self.content.borrow().clone()
+            self.content.clone()
         }
     }
 
     /// Clears the block content and resets the word count to 0
-    pub fn clear(&mut self) {
-        self.content.borrow_mut().clear();
-        self.new_word.borrow_mut().set(false);
-        self.nwords.borrow_mut().set(0);
+    pub(crate) fn clear(&mut self) {
+        self.content.clear();
+        self.new_word = false;
+        self.nwords = 0;
     }
 
     /// Marks the block content as visible or not
-    pub fn set_visible(&mut self, visible: bool) {
-        self.visible.borrow_mut().set(visible);
+    pub(crate) fn set_visible(&mut self, visible: bool) {
+        self.visible = visible;
     }
 
     /// Find the `**search_str**` in the block content and, when found, return a pair of
@@ -188,8 +159,7 @@ impl BlockElementContent {
     /// If no match is found, `TextDirectiveStatus::NotFound` is returned
     /// If start offset is beyond the `word_count`, returns `TextDirectiveStatus::EndOfContent`
     /// If the match is found beyond the `allowed_word_distance`, returns `TextDirectiveStatus::WordDistanceExceeded`
-    #[allow(clippy::cast_sign_loss)]
-    pub fn find(
+    pub(crate) fn find(
         &self,
         search_str: &str,
         start_offset: usize,
@@ -197,7 +167,7 @@ impl BlockElementContent {
         end_bounded_word: bool,
         allowed_word_distance: i32,
     ) -> Option<TextDirectiveStatus> {
-        if !self.visible.borrow().get() {
+        if !self.visible {
             return None;
         }
 
@@ -239,7 +209,7 @@ impl BlockElementContent {
                     }
                     i += 1;
 
-                    found = start_bounded_word && end_bounded_word && sw.eq(&cword.1)
+                    found = start_bounded_word && end_bounded_word && sw == &cword.1
                         || start_bounded_word && cword.1.starts_with(sw)
                         || end_bounded_word && cword.1.ends_with(sw)
                         || cword.1.contains(sw);
@@ -285,26 +255,6 @@ impl BlockElementContent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_set_name() {
-        let block_content = BlockElementContent::new();
-        block_content.set_name("div");
-        assert_eq!(block_content.get_name().as_str(), "div");
-    }
-
-    #[test]
-    fn test_set_start_line() {
-        let block_content = BlockElementContent::new();
-        block_content.set_start_line(1);
-        assert_eq!(block_content.get_start_line(), 1);
-    }
-
-    #[test]
-    fn test_set_end_line() {
-        let block_content = BlockElementContent::new();
-        block_content.set_end_line(2);
-        assert_eq!(block_content.get_end_line(), 2);
-    }
 
     #[test]
     fn test_set_get_content() {
