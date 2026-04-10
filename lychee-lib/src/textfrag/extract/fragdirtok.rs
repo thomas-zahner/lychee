@@ -72,7 +72,7 @@
 //!     process_html(html_content, &tokenizer);
 //! }
 //! ```
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -138,7 +138,6 @@ const INVISIBLE_CLAUSES: &[&str] = &["none", "hidden"];
 const INVISIBLE_NAMES: &[&str] = &["display", "visibility"];
 
 use crate::textfrag::types::BlockElementContent;
-// use crate::textfrag::utils::{find_first_word, find_last_word};
 
 /// Fragment Directive html5ever Tokenizer
 /// This is a `TokenSink` implementation to process the HTML5 tokens from the
@@ -186,14 +185,6 @@ impl FragmentDirectiveTokenizer {
 
     fn clear_block_content(&self) {
         self.content.borrow_mut().clear();
-    }
-
-    fn _text_directives(&self) -> Ref<'_, Vec<TextDirective>> {
-        self.directives.borrow()
-    }
-
-    fn text_directives_mut(&self) -> RefMut<'_, Vec<TextDirective>> {
-        self.directives.borrow_mut()
     }
 
     fn find_last_word(content: &str) -> &str {
@@ -349,9 +340,8 @@ impl FragmentDirectiveTokenizer {
 
     /// Check all the text directives
     fn check_all_text_directives(&self) {
-        let mut tds = self.text_directives_mut();
-        for td in tds.iter_mut() {
-            if TextDirectiveStatus::Completed != td.get_status() {
+        for td in self.directives.borrow_mut().iter_mut() {
+            if TextDirectiveStatus::Completed != td.status {
                 self.check_text_directive(td);
             }
         }
@@ -375,31 +365,31 @@ impl FragmentDirectiveTokenizer {
             TextDirectiveKind::Prefix => {
                 start_bounded_word = true;
                 // end_bounded_word = true;
-                directive.prefix()
+                &directive.prefix
             }
             TextDirectiveKind::Start => {
-                if directive.prefix().is_empty() {
+                if directive.prefix.is_empty() {
                     start_bounded_word = true;
                 } else {
                     max_word_distance = 1;
                 }
 
-                if !directive.end().is_empty() || directive.suffix().is_empty() {
+                if !directive.end.is_empty() || directive.suffix.is_empty() {
                     end_bounded_word = true;
                 }
-                directive.start()
+                &directive.start
             }
             TextDirectiveKind::End => {
                 start_bounded_word = true;
-                if directive.suffix().is_empty() {
+                if directive.suffix.is_empty() {
                     end_bounded_word = true;
                 }
-                directive.end()
+                &directive.end
             }
             TextDirectiveKind::Suffix => {
                 end_bounded_word = true;
                 max_word_distance = 1;
-                directive.suffix()
+                &directive.suffix
             }
         };
 
@@ -417,23 +407,23 @@ impl FragmentDirectiveTokenizer {
     ///
     /// The method returns a tuple of (`end_finding_directive`: bool, kind: `TextDirectiveKind`)
     fn find_next_directives(directive: &TextDirective) -> (bool, TextDirectiveKind) {
-        let mut next_directive = directive.search_kind();
+        let mut next_directive = directive.search_kind;
 
-        let end_finding_directives = match directive.search_kind() {
+        let end_finding_directives = match directive.search_kind {
             TextDirectiveKind::Prefix => {
                 next_directive = TextDirectiveKind::Start;
                 false
             }
             TextDirectiveKind::Start => {
-                if !directive.end().is_empty() {
+                if !directive.end.is_empty() {
                     next_directive = TextDirectiveKind::End;
-                } else if !directive.suffix().is_empty() {
+                } else if !directive.suffix.is_empty() {
                     next_directive = TextDirectiveKind::Suffix;
                 }
-                directive.end().is_empty() && directive.suffix().is_empty()
+                directive.end.is_empty() && directive.suffix.is_empty()
             }
             TextDirectiveKind::End => {
-                let no_suffix = directive.suffix().is_empty();
+                let no_suffix = directive.suffix.is_empty();
                 if !no_suffix {
                     next_directive = TextDirectiveKind::Suffix;
                 }
@@ -451,19 +441,19 @@ impl FragmentDirectiveTokenizer {
     /// This method confirms the correctness of the start word. If the word validation fails,
     /// false is returned, instructing the caller to restart the search from the end offset
     fn validate_start(&self, start: usize, end: usize, directive: &TextDirective) -> bool {
-        if !directive.prefix().is_empty() {
+        if !directive.prefix.is_empty() {
             let found_content = self.get_block_content(Some(start..end));
 
             let mut prefix_last_word = "";
-            if start == directive.next_offset() {
-                prefix_last_word = FragmentDirectiveTokenizer::find_last_word(directive.prefix());
-            };
+            if start == directive.next_offset {
+                prefix_last_word = FragmentDirectiveTokenizer::find_last_word(&directive.prefix);
+            }
 
-            let start_first_word = FragmentDirectiveTokenizer::find_first_word(directive.start());
+            let start_first_word = FragmentDirectiveTokenizer::find_first_word(&directive.start);
             let found_content_first_word =
                 FragmentDirectiveTokenizer::find_first_word(&found_content);
 
-            if format!("{prefix_last_word}{start_first_word}") //, prefix_last_word, start_first_word)
+            if format!("{prefix_last_word}{start_first_word}")
                 .escape_default()
                 .to_string()
                 != found_content_first_word
@@ -482,20 +472,20 @@ impl FragmentDirectiveTokenizer {
     /// Validates the suffix found in the content as suffix shall be a start bounded word
     /// or an end bounded word (of the **last** word of `End` directive)
     fn validate_suffix(&self, start: usize, end: usize, directive: &TextDirective) -> bool {
-        let start_offset = directive.next_offset();
+        let start_offset = directive.next_offset;
 
         if start == start_offset {
-            let end_last_word = if directive.end().is_empty() {
-                FragmentDirectiveTokenizer::find_last_word(directive.start())
+            let end_last_word = if directive.end.is_empty() {
+                FragmentDirectiveTokenizer::find_last_word(&directive.start)
             } else {
-                FragmentDirectiveTokenizer::find_last_word(directive.end())
+                FragmentDirectiveTokenizer::find_last_word(&directive.end)
             };
-            let suffix_first_word = FragmentDirectiveTokenizer::find_first_word(directive.suffix());
+            let suffix_first_word = FragmentDirectiveTokenizer::find_first_word(&directive.suffix);
 
             let found_content = self.get_block_content(Some(start_offset..end));
             let content_last_word = FragmentDirectiveTokenizer::find_first_word(&found_content);
 
-            let word_found = format!("{end_last_word}{suffix_first_word}") //, end_last_word, suffix_first_word)
+            let word_found = format!("{end_last_word}{suffix_first_word}")
                 .escape_default()
                 .to_string();
             if word_found != content_last_word {
@@ -519,7 +509,7 @@ impl FragmentDirectiveTokenizer {
         let mut end_directives_loop = false;
 
         while !end_directives_loop {
-            let search_kind = directive.search_kind();
+            let search_kind = directive.search_kind;
 
             let (start_bounded_word, end_bounded_word, allowed_word_distance, search_str) =
                 FragmentDirectiveTokenizer::gather_directive_flags(search_kind, directive);
@@ -527,9 +517,9 @@ impl FragmentDirectiveTokenizer {
                 FragmentDirectiveTokenizer::find_next_directives(directive);
             end_directives_loop = end_finding_directives;
 
-            directive.set_status(TextDirectiveStatus::NotFound);
+            directive.status = TextDirectiveStatus::NotFound;
 
-            let start_offset = directive.next_offset();
+            let start_offset = directive.next_offset;
             if let Some(status) = self.find_in_content(
                 &search_str,
                 start_offset,
@@ -540,7 +530,7 @@ impl FragmentDirectiveTokenizer {
                 match status {
                     TextDirectiveStatus::WordDistanceExceeded(offset) => {
                         directive.reset();
-                        directive.set_next_offset(offset);
+                        directive.next_offset = offset;
                         continue;
                     }
                     TextDirectiveStatus::Found((start, end)) => {
@@ -549,7 +539,7 @@ impl FragmentDirectiveTokenizer {
                             TextDirectiveKind::Start => {
                                 if !self.validate_start(start, end, directive) {
                                     directive.reset();
-                                    directive.set_next_offset(end + 1);
+                                    directive.next_offset = end + 1;
                                     continue;
                                 }
 
@@ -567,14 +557,13 @@ impl FragmentDirectiveTokenizer {
                                     || !self.validate_suffix(start, end, directive)
                                 {
                                     directive.reset();
-                                    directive.set_next_offset(end);
+                                    directive.next_offset = end;
                                     continue;
                                 }
 
                                 let suffix_replaced_text =
-                                    directive.get_result_str().replace(directive.suffix(), "");
-                                directive.clear_result_str();
-                                directive.append_result_str(&suffix_replaced_text);
+                                    directive.result_str.replace(&directive.suffix, "");
+                                directive.result_str = suffix_replaced_text;
                             }
                         }
 
@@ -583,18 +572,18 @@ impl FragmentDirectiveTokenizer {
                         if end_bounded_word {
                             next_offset += 1;
                         }
-                        directive.set_next_offset(next_offset);
+                        directive.next_offset = next_offset;
 
                         // We've matched all the text directives...time to exit!
                         if next_directive == search_kind {
-                            directive.set_status(TextDirectiveStatus::Completed);
+                            directive.status = TextDirectiveStatus::Completed;
                             return;
                         }
                     }
                     TextDirectiveStatus::NotFound => {
                         // If the directive kind is End, we MIGHT find the end in  some other block element's content -
                         // until then, we keep collecting the block element contents
-                        if TextDirectiveKind::End == directive.search_kind() {
+                        if TextDirectiveKind::End == directive.search_kind {
                             let end = self.content.borrow().word_count().saturating_sub(1);
                             let range = if end > 0 {
                                 Some(start_offset..end)
@@ -607,7 +596,7 @@ impl FragmentDirectiveTokenizer {
                         }
 
                         // reset the search kind, status and offset fields
-                        directive.set_status(TextDirectiveStatus::NotFound);
+                        directive.status = TextDirectiveStatus::NotFound;
                         directive.reset();
                         return;
                     }
@@ -619,14 +608,14 @@ impl FragmentDirectiveTokenizer {
                 }
             }
 
-            directive.set_search_kind(next_directive);
+            directive.search_kind = next_directive;
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::textfrag::types::{FragmentDirective, FragmentDirectiveError, TextDirectiveStatus};
+    use crate::textfrag::types::{FragmentDirective, FragmentDirectiveError};
 
     const HTML_INPUT: &str = "<html>
     <body>
@@ -649,80 +638,28 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_checker() {
-        const FRAGMENT: &str = "text=par-,agraph,inp,-ut";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str);
-        assert!(fd.is_some());
-
-        if let Some(fd) = fd {
-            let res = fd.text_directives.clone();
-            assert_eq!(res.len(), 1);
-            assert_eq!(res[0].prefix(), "par");
-            assert_eq!(res[0].start(), "agraph");
-            assert_eq!(res[0].end(), "inp");
-            assert_eq!(res[0].suffix(), "ut");
-
-            let results = fd.check(HTML_INPUT);
-            assert!(results.is_ok());
-        }
+        let fd = FragmentDirective::from_fragment_as_str(":~:text=par-,agraph,inp,-ut").unwrap();
+        assert!(fd.check(HTML_INPUT).is_ok());
     }
 
     #[test]
     fn test_multiple_directives() {
-        const FRAGMENT: &str = "text=par-,agraph,inp,-ut&text=and-, some, text";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str);
-        assert!(fd.is_some());
-
-        if let Some(fd) = fd {
-            let res = fd.text_directives.clone();
-            assert_eq!(res.len(), 2);
-            assert_eq!(res[0].prefix(), "par");
-            assert_eq!(res[0].start(), "agraph");
-            assert_eq!(res[0].end(), "inp");
-            assert_eq!(res[0].suffix(), "ut");
-
-            assert_eq!(res[1].prefix(), "and");
-            assert_eq!(res[1].start(), "some");
-            assert_eq!(res[1].end(), "text");
-            assert_eq!(res[1].suffix(), "");
-
-            let results = fd.check(HTML_INPUT);
-            assert!(results.is_ok());
-        }
+        let fd = FragmentDirective::from_fragment_as_str(
+            ":~:text=par-,agraph,inp,-ut&text=and-, some, text",
+        )
+        .unwrap();
+        assert!(fd.check(HTML_INPUT).is_ok());
     }
 
     #[test]
     fn test_partial_success() {
-        const FRAGMENT: &str = "text=par-,agraph,inp,-ut&text=and-, some, txt";
-        let directive_str = format!(":~:{FRAGMENT}",);
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str);
-        assert!(fd.is_some());
-
-        if let Some(fd) = fd {
-            let res = fd.text_directives.clone();
-            assert_eq!(res.len(), 2);
-            assert_eq!(res[0].prefix(), "par");
-            assert_eq!(res[0].start(), "agraph");
-            assert_eq!(res[0].end(), "inp");
-            assert_eq!(res[0].suffix(), "ut");
-
-            assert_eq!(res[1].prefix(), "and");
-            assert_eq!(res[1].start(), "some");
-            assert_eq!(res[1].end(), "txt");
-            assert_eq!(res[1].suffix(), "");
-
-            let results = fd.check(HTML_INPUT);
-            assert!(results.is_err());
-
-            if let Some(FragmentDirectiveError::PartialOk(v)) = results.err() {
-                assert_eq!(v.len(), 2);
-                assert!(v["text=par-,agraph,inp,-ut"] == TextDirectiveStatus::Completed);
-                assert!(v["text=and-, some, txt"] == TextDirectiveStatus::NotFound);
-            }
-        }
+        let fd = FragmentDirective::from_fragment_as_str(
+            ":~:text=par-,agraph,inp,-ut&text=and-, some, txt",
+        )
+        .unwrap();
+        assert_eq!(
+            fd.check(HTML_INPUT),
+            Err(FragmentDirectiveError::NotFoundError)
+        );
     }
 }

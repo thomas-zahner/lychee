@@ -38,8 +38,8 @@ mod test_fs_tree {
 
         assert!(
             fd.text_directives.len() == 2
-                && fd.text_directives[0].prefix() == "prefix"
-                && fd.text_directives[0].search_kind() == TextDirectiveKind::Prefix
+                && fd.text_directives[0].prefix == "prefix"
+                && fd.text_directives[0].search_kind == TextDirectiveKind::Prefix
         );
     }
 

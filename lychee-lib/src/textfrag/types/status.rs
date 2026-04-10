@@ -1,15 +1,9 @@
 /// Defines the status of the Text Fragment search and extraction/search operation status
-use std::{
-    collections::HashMap,
-    fmt::{Display, Formatter, Result},
-};
+use std::fmt::{Display, Formatter, Result};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// `FragmentDirective` check error status
 pub enum FragmentDirectiveError {
-    /// Text Fragment search found one or more directives and so was partially successful
-    /// - check individual text directive status for more details
-    PartialOk(HashMap<String, TextDirectiveStatus>),
     /// Failed to find the `TextDirective`s
     NotFoundError,
     /// Error processing `FragmentDirective` in the `[url:Url]`'s fragment string
@@ -19,7 +13,6 @@ pub enum FragmentDirectiveError {
 impl Display for FragmentDirectiveError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
-            FragmentDirectiveError::PartialOk(m) => write!(f, "Partial Ok {m:?}"),
             FragmentDirectiveError::NotFoundError => write!(f, "Directives not found Error"),
             FragmentDirectiveError::DirectiveProcessingError => write!(
                 f,

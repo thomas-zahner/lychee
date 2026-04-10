@@ -1,15 +1,12 @@
-//! Text Directive struct and its support functions
-//!
 //! This module defines the `TextDirective` struct, which represents a range of text in a
 //! web page for highlighting to the user.
 //!
-//! The syntax for a text directive is:
-//!     text=[prefix-,]start[,end][,-suffix]
+//! The syntax for a text directive is `text=[prefix-,]start[,end][,-suffix]`
+//!
 //! * `start` is required to be non-null, with the other three terms marked as optional.
 //! * An empty string is NOT valid for any of the directive items.
 //! * `start` with `end` constitutes a text range.
-//! * `prefix` and `suffix` are contextual terms and are not part of the text fragments
-//!    to search and gather.
+//! * `prefix` and `suffix` are contextual terms and are not part of the text fragments to search and gather.
 //!
 //! NOTE: Directives are percent-encoded by the caller. The `TextDirective` will return
 //! percent-decoded directives.
@@ -52,32 +49,30 @@ pub(crate) struct TextDirective {
     /// the directive ends with a hyphen (-) to separate from the *start* term
     /// starts on the word boundary
     /// OPTIONAL
-    prefix: String,
+    pub(crate) prefix: String,
     /// Start directive - If only start is given, first instance of the string
     /// specified as *start* is the target
     /// MANDATORY
-    start: String,
+    pub(crate) start: String,
     /// End directive - with this specified, a range of text in the page or block content
     /// is to be found.
     /// Target text range startis from *start*, until the first instance
     /// of the *end* (after *start*)
     /// OPTIONAL
-    end: String,
+    pub(crate) end: String,
     /// Suffix directive - a contextual term to identify the text immediately after (the *end*)
     /// ends with a hyphen (-) to separate from the *end* term
     /// OPTIONAL
-    suffix: String,
-    /// Text Directive fragment source(for reference)
-    raw_directive: String,
+    pub(crate) suffix: String,
 
     /// Text Directive validation Status - updated by the tokenizer state machine
-    status: TextDirectiveStatus,
+    pub(crate) status: TextDirectiveStatus,
     /// Current search string - this will be dynamically updated by the tokenizer state machine
-    search_kind: TextDirectiveKind,
+    pub(crate) search_kind: TextDirectiveKind,
     /// start offset to start searching `**search_str**` on the block element content
-    next_offset: usize,
+    pub(crate) next_offset: usize,
     /// Tokenizer resultant string - contains the found content
-    result_str: String,
+    pub(crate) result_str: String,
 }
 
 /// `TextDirective` delimiter
@@ -88,26 +83,6 @@ const TEXT_DIRECTIVE_REGEX: &str = r"(?s)^text=(?:\s*(?P<prefix>[^,&-]*)-\s*[,$]
 
 /// Text Directive getters and setters
 impl TextDirective {
-    /// returns the current directive search kind
-    pub(crate) fn search_kind(&self) -> TextDirectiveKind {
-        self.search_kind
-    }
-
-    /// Setter for marking the next directive search kind
-    pub(crate) fn set_search_kind(&mut self, kind: TextDirectiveKind) {
-        self.search_kind = kind;
-    }
-
-    /// Getter to know the next directive's search start offset
-    pub(crate) fn next_offset(&self) -> usize {
-        self.next_offset
-    }
-
-    /// Setter for updating the next directive search offset
-    pub(crate) fn set_next_offset(&mut self, offset: usize) {
-        self.next_offset = offset;
-    }
-
     /// Resets the `TextDirective` state information.
     ///
     /// When called with current search directive as `End` element, the reset will
@@ -117,17 +92,17 @@ impl TextDirective {
     /// For rest of the directive state, reset will force restart of the search.
     pub(crate) fn reset(&mut self) {
         // reset the search kind, and offset fields
-        self.set_next_offset(0);
-        self.set_status(TextDirectiveStatus::NotFound);
+        self.next_offset = 0;
+        self.status = TextDirectiveStatus::NotFound;
 
         // End directive can span across blocks (rest other directives MUST be on the same block)
         // If the next directive is End, we retain the resultant string found so far
-        if TextDirectiveKind::End != self.search_kind() {
+        if TextDirectiveKind::End != self.search_kind {
             self.result_str.clear();
 
             // Restart the search
             self.search_kind = TextDirectiveKind::Start;
-            if !self.prefix().is_empty() {
+            if !self.prefix.is_empty() {
                 self.search_kind = TextDirectiveKind::Prefix;
             }
         }
@@ -136,52 +111,6 @@ impl TextDirective {
     /// Update resultant string content (padding with whitespace, for readability)
     pub(crate) fn append_result_str(&mut self, content: &str) {
         self.result_str.push_str(&format!("{content} "));
-    }
-
-    /// Clears the resultant string
-    pub(crate) fn clear_result_str(&mut self) {
-        self.result_str.clear();
-    }
-
-    /// Getter for the resultant string - based on the directive search results
-    /// from the block content
-    pub(crate) fn get_result_str(&self) -> String {
-        self.result_str.to_string()
-    }
-
-    /// Getter for the `TextDirective` status
-    pub(crate) fn get_status(&self) -> TextDirectiveStatus {
-        self.status
-    }
-
-    /// Setter for the `TextDirective` status
-    pub(crate) fn set_status(&mut self, status: TextDirectiveStatus) {
-        self.status = status;
-    }
-
-    /// Getter for the prefix directive
-    pub(crate) fn prefix(&self) -> &str {
-        self.prefix.as_str()
-    }
-
-    /// Getter for the start directive
-    pub(crate) fn start(&self) -> &str {
-        self.start.as_str()
-    }
-
-    /// Getter for end directive
-    pub(crate) fn end(&self) -> &str {
-        self.end.as_str()
-    }
-
-    /// Getter for the suffix directive
-    pub(crate) fn suffix(&self) -> &str {
-        self.suffix.as_str()
-    }
-
-    /// Returns the raw directive, as in the `[url:Url]`'s fragment string
-    pub(crate) fn raw_directive(&self) -> &str {
-        self.raw_directive.as_str()
     }
 }
 
@@ -259,9 +188,8 @@ impl TextDirective {
                     start,
                     end,
                     suffix,
-                    raw_directive: fragment.to_owned(),
                     status: TextDirectiveStatus::NotStarted,
-                    search_kind: search_kind.into(),
+                    search_kind,
                     next_offset: 0,
                     result_str: String::new(),
                 })
@@ -291,89 +219,70 @@ mod tests {
     fn test_fragment_directive_start_only() {
         const FRAGMENT: &str = "text=repeated";
 
-        let td = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(td.is_ok());
-        assert_eq!(td.clone().unwrap().start(), "repeated");
-        assert_eq!(td.clone().unwrap().search_kind(), TextDirectiveKind::Start);
+        let td = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(td.start, "repeated");
+        assert_eq!(td.search_kind, TextDirectiveKind::Start);
     }
 
     #[test]
     fn test_fragment_directive_start_end() {
         const FRAGMENT: &str = "text=repeated, block";
 
-        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(tdirective.is_ok());
-        assert_eq!(tdirective.clone().unwrap().start(), "repeated");
-        assert_eq!(tdirective.clone().unwrap().end(), "block");
+        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(tdirective.start, "repeated");
+        assert_eq!(tdirective.end, "block");
     }
 
     #[test]
     fn test_fragment_directive_prefix_start() {
         const FRAGMENT: &str = "text=with-,repeated";
 
-        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(tdirective.is_ok());
-        assert_eq!(tdirective.clone().unwrap().prefix(), "with");
-        assert_eq!(tdirective.clone().unwrap().start(), "repeated");
-        assert_eq!(
-            tdirective.clone().unwrap().search_kind(),
-            TextDirectiveKind::Prefix
-        );
+        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(tdirective.prefix, "with");
+        assert_eq!(tdirective.start, "repeated");
+        assert_eq!(tdirective.search_kind, TextDirectiveKind::Prefix);
     }
 
     #[test]
     fn test_fragment_directive_start_suffix() {
         const FRAGMENT: &str = "text=linked%20URL,-'s%20format";
 
-        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(tdirective.is_ok());
-        assert_eq!(tdirective.clone().unwrap().start(), "linked URL");
-        assert_eq!(tdirective.clone().unwrap().suffix(), "'s format");
-        assert_eq!(
-            tdirective.clone().unwrap().search_kind(),
-            TextDirectiveKind::Start
-        );
+        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(tdirective.start, "linked URL");
+        assert_eq!(tdirective.suffix, "'s format");
+        assert_eq!(tdirective.search_kind, TextDirectiveKind::Start);
     }
 
     #[test]
     fn test_fragment_directive_prefix_start_suffix() {
         const FRAGMENT: &str = "text=with-,repeated,-instance";
 
-        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(tdirective.is_ok());
-        assert_eq!(tdirective.clone().unwrap().prefix(), "with");
-        assert_eq!(tdirective.clone().unwrap().start(), "repeated");
-        assert_eq!(tdirective.clone().unwrap().suffix(), "instance");
-        assert_eq!(
-            tdirective.clone().unwrap().search_kind(),
-            TextDirectiveKind::Prefix
-        );
+        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(tdirective.prefix, "with");
+        assert_eq!(tdirective.start, "repeated");
+        assert_eq!(tdirective.suffix, "instance");
+        assert_eq!(tdirective.search_kind, TextDirectiveKind::Prefix);
     }
 
     #[test]
     fn test_fragment_directive_prefix_start_suffix_end() {
         const FRAGMENT: &str = "text=with-,repeated, For, -instance";
 
-        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(tdirective.is_ok());
-        assert_eq!(tdirective.clone().unwrap().prefix(), "with");
-        assert_eq!(tdirective.clone().unwrap().start(), "repeated");
-        assert_eq!(tdirective.clone().unwrap().suffix(), "instance");
-        assert_eq!(tdirective.clone().unwrap().end(), "For");
-        assert_eq!(
-            tdirective.clone().unwrap().search_kind(),
-            TextDirectiveKind::Prefix
-        );
+        let tdirective = TextDirective::from_fragment_as_str(FRAGMENT).unwrap();
+        assert_eq!(tdirective.prefix, "with");
+        assert_eq!(tdirective.start, "repeated");
+        assert_eq!(tdirective.suffix, "instance");
+        assert_eq!(tdirective.end, "For");
+        assert_eq!(tdirective.search_kind, TextDirectiveKind::Prefix);
     }
 
     #[test]
     fn test_missing_start() {
         const FRAGMENT: &str = "text=suffix-";
-
         let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(
-            tdirective.is_err()
-                && tdirective.unwrap_err() == TextFragmentError::StartDirectiveMissingError
+        assert_eq!(
+            tdirective,
+            Err(TextFragmentError::StartDirectiveMissingError)
         );
     }
 
@@ -382,9 +291,7 @@ mod tests {
         const FRAGMENT: &str = "prefix-";
 
         let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(
-            tdirective.is_err() && tdirective.unwrap_err() == TextFragmentError::NotTextDirective
-        );
+        assert_eq!(tdirective, Err(TextFragmentError::NotTextDirective));
     }
 
     #[test]
@@ -392,12 +299,11 @@ mod tests {
         const FRAGMENT: &str = "text=with%00%9F%92%96";
 
         let tdirective = TextDirective::from_fragment_as_str(FRAGMENT);
-        assert!(
-            tdirective.is_err()
-                && tdirective.unwrap_err()
-                    == TextFragmentError::PercentDecodeError(
-                        "invalid utf-8 sequence of 1 bytes from index 5".to_string()
-                    )
+        assert_eq!(
+            tdirective,
+            Err(TextFragmentError::PercentDecodeError(
+                "invalid utf-8 sequence of 1 bytes from index 5".to_string()
+            ))
         );
     }
 }
