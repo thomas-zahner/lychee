@@ -27,7 +27,7 @@
 //! ```
 use std::sync::LazyLock;
 
-use fancy_regex::Regex;
+use regex::Regex;
 
 use crate::textfrag::types::{
     TextDirectiveKind, error::TextFragmentError, status::TextDirectiveStatus,
@@ -137,32 +137,27 @@ impl TextDirective {
     /// - `TextFragmentError::PercentDecodeError`, if the percent decode fails for the directive
     ///
     pub(crate) fn from_fragment_as_str(fragment: &str) -> Result<TextDirective, TextFragmentError> {
-        let Ok(Some(result)) = TEXT_DIRECTIVE_REGEX.captures(fragment) else {
+        let Some(result) = TEXT_DIRECTIVE_REGEX.captures(fragment) else {
             return Err(TextFragmentError::NotTextDirective);
         };
 
+        let get_decoded_group = |name: &str| {
+            result
+                .name(name)
+                .map(|m| TextDirective::percent_decode(m.as_str()))
+                .transpose()
+        };
+
         let start = TextDirective::percent_decode(&result["start"])?;
+        let prefix = get_decoded_group("prefix")?;
+        let end = get_decoded_group("end")?;
+        let suffix = get_decoded_group("suffix")?;
 
-        let mut search_kind = TextDirectiveKind::Start;
-
-        let prefix = result
-            .name("prefix")
-            .map(|m| TextDirective::percent_decode(m.as_str()))
-            .transpose()?;
-
-        if prefix.is_some() {
-            search_kind = TextDirectiveKind::Prefix;
-        }
-
-        let end = result
-            .name("end")
-            .map(|m| TextDirective::percent_decode(m.as_str()))
-            .transpose()?;
-
-        let suffix = result
-            .name("suffix")
-            .map(|m| TextDirective::percent_decode(m.as_str()))
-            .transpose()?;
+        let search_kind = if prefix.is_some() {
+            TextDirectiveKind::Prefix
+        } else {
+            TextDirectiveKind::Start
+        };
 
         Ok(TextDirective {
             prefix,

@@ -69,7 +69,6 @@ impl FragmentDirective {
             return Ok(text_directives);
         }
 
-        log::warn!("Not a fragment directive!");
         Err(TextFragmentError::FragmentDirectiveDelimiterMissing)
     }
 
@@ -158,10 +157,7 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_start_only() {
-        const FRAGMENT: &str = "text=repeated";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd = FragmentDirective::from_fragment_as_str(":~:text=repeated").unwrap();
 
         assert_eq!(
             fd,
@@ -178,10 +174,7 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_start_end() {
-        const FRAGMENT: &str = "text=repeated, block";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd = FragmentDirective::from_fragment_as_str(":~:text=repeated, block").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
@@ -208,10 +201,8 @@ mod tests {
                     </body>
                 </html>
                 "#;
-        let text_directive = "text=a-,paragraph,inline";
-        let fd_str = format!(":~:{text_directive}");
 
-        let fd = FragmentDirective::from_fragment_as_str(&fd_str).unwrap();
+        let fd = FragmentDirective::from_fragment_as_str(":~:text=a-,paragraph,inline").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
@@ -230,10 +221,7 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_prefix_start() {
-        const FRAGMENT: &str = "text=with-,repeated";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd = FragmentDirective::from_fragment_as_str(":~:text=with-,repeated").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
@@ -251,10 +239,8 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_start_suffix() {
-        const FRAGMENT: &str = "text=linked%20URL,-'s format";
-
-        let directive_str = format!(":~:{FRAGMENT}");
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd =
+            FragmentDirective::from_fragment_as_str(":~:text=linked%20URL,-'s format").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
@@ -272,10 +258,8 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_prefix_start_suffix() {
-        const FRAGMENT: &str = "text=with-,repeated,-instance";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd =
+            FragmentDirective::from_fragment_as_str(":~:text=with-,repeated,-instance").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
@@ -294,10 +278,8 @@ mod tests {
 
     #[test]
     fn test_fragment_directive_prefix_start_suffix_end() {
-        const FRAGMENT: &str = "text=with-,repeated, mapped, -or";
-        let directive_str = format!(":~:{FRAGMENT}");
-
-        let fd = FragmentDirective::from_fragment_as_str(&directive_str).unwrap();
+        let fd =
+            FragmentDirective::from_fragment_as_str(":~:text=with-,repeated, mapped, -or").unwrap();
         assert_eq!(
             fd,
             FragmentDirective {
