@@ -48,28 +48,15 @@ impl FragmentDirective {
     /// - `FragmentDirectiveDelimiterMissing` - if the fragment directive delimiter is not found
     /// in the `[url:Url]`'s fragment
     fn build_text_directives(fragment: &str) -> Result<Vec<TextDirective>, TextFragmentError> {
-        // Find the start of the fragment directive delimiter
-        if let Some(offset) = fragment.find(FRAGMENT_DIRECTIVE_DELIMITER) {
-            let mut text_directives = Vec::new();
+        let Some(offset) = fragment.find(FRAGMENT_DIRECTIVE_DELIMITER) else {
+            return Err(TextFragmentError::FragmentDirectiveDelimiterMissing);
+        };
 
-            let s: &str = &fragment[offset + FRAGMENT_DIRECTIVE_DELIMITER.len()..];
-            for td in s.split('&').enumerate() {
-                let text_directive = TextDirective::from_fragment_as_str(td.1);
-                if let Ok(text_directive) = text_directive {
-                    text_directives.push(text_directive);
-                } else {
-                    log::warn!(
-                        "Failed with error {:?} to parse the text directive: {1}",
-                        text_directive.err(),
-                        td.1
-                    );
-                }
-            }
-
-            return Ok(text_directives);
-        }
-
-        Err(TextFragmentError::FragmentDirectiveDelimiterMissing)
+        fragment[offset + FRAGMENT_DIRECTIVE_DELIMITER.len()..]
+            .split('&')
+            .map(TextDirective::from_fragment_as_str)
+            // .filter(|r| r.is_ok()) // TODO!
+            .collect()
     }
 
     /// Constructs `FragmentDirective` object, containing a list of `TextDirective`'s

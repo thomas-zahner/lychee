@@ -1,3 +1,4 @@
+use crate::textfrag::FRAGMENT_DIRECTIVE_DELIMITER;
 use std::str::Utf8Error;
 
 /// Text Fragment Error codes
@@ -8,11 +9,11 @@ use thiserror::Error;
 /// text directive passed in the `[url:Url]`'s fragment
 pub enum TextFragmentError {
     /// Error indicating delimiter is missing in the URLs fragment string
-    #[error("Fragment Directive delimiter missing")]
+    #[error("Fragment directive delimiter '{FRAGMENT_DIRECTIVE_DELIMITER}' missing")]
     FragmentDirectiveDelimiterMissing,
 
     /// Not a text directive error
-    #[error("Not a Text Directive")]
+    #[error("Not a text directive")]
     NotTextDirective,
 
     /// `TextDirective` is percent encoded - the error is returned if the decoding fails
