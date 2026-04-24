@@ -5,7 +5,7 @@ on:
     branches:
       - master
     tags:
-      - 'lychee-v*'
+      - "lychee-v*"
   pull_request:
     branches:
       - master
@@ -19,9 +19,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'lycheeverse' &&
-        github.actor != 'dependabot[bot]' &&
-        ( github.event_name != 'pull_request' || github.event.pull_request.head.repo.owner.login == github.event.pull_request.base.repo.owner.login )
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -90,12 +87,12 @@ jobs:
           file: ${{ env.DOCKERFILE }}
           platforms: ${{ env.DOCKER_PLATFORMS }}
           push: ${{ (github.event_name != 'pull_request' &&
-                     github.actor != 'dependabot[bot]') ||
-                     startsWith(github.ref, 'lychee-v') }}
+            github.actor != 'dependabot[bot]') ||
+            startsWith(github.ref, 'lychee-v') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            "LYCHEE_VERSION=${{ github.ref == 'refs/heads/master' && 'nightly' || 'latest' }}"
+            "LYCHEE_VERSION='nightly'"
 
       - name: Push Image (alpine)
         uses: docker/build-push-action@v7
@@ -104,12 +101,12 @@ jobs:
           file: ${{ env.DOCKERFILE_ALPINE }}
           platforms: ${{ env.DOCKER_PLATFORMS }}
           push: ${{ (github.event_name != 'pull_request' &&
-                     github.actor != 'dependabot[bot]') ||
-                     startsWith(github.ref, 'lychee-v') }}
+            github.actor != 'dependabot[bot]') ||
+            startsWith(github.ref, 'lychee-v') }}
           tags: ${{ steps.meta-alpine.outputs.tags }}
           labels: ${{ steps.meta-alpine.outputs.labels }}
           build-args: |
-            "LYCHEE_VERSION=${{ github.ref == 'refs/heads/master' && 'nightly' || 'latest' }}"
+            "LYCHEE_VERSION='nightly'"
 
       - name: Update DockerHub description
         uses: peter-evans/dockerhub-description@v5
