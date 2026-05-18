@@ -1,26 +1,21 @@
-FROM debian:trixie-slim AS builder
-WORKDIR /builder
+FROM rust:trixie AS builder
 
-ARG LYCHEE_VERSION="latest"
+WORKDIR /lychee
+COPY . ./
 
-RUN apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates \
-        jq \
-        wget \
-    && rm -rf /var/lib/apt/lists/* \
-    && ARCH=$(case $(dpkg --print-architecture) in \
-        "amd64") echo "x86_64";; \
-        "arm64") echo "aarch64";; \
+RUN apt-get update && apt-get install -y musl-tools \
+    && ARCH=$(case $(arch) in \
+        "x86_64") echo "x86_64";; \
+        "aarch64") echo "aarch64";; \
         *) echo "Unsupported architecture" && exit 1;; \
-        esac) \
-    && BASE_URL=$(case $LYCHEE_VERSION in \
-        "latest") echo "https://github.com/lycheeverse/lychee/releases/latest/download";; \
-        *) echo "https://github.com/lycheeverse/lychee/releases/download/$LYCHEE_VERSION";; \
-        esac) \
-    && wget -O - "$BASE_URL/lychee-$ARCH-unknown-linux-gnu.tar.gz" | tar -xz --strip-components 1 \
-    && chmod +x lychee
+    esac) \
+    && TARGET="$ARCH-unknown-linux-gnu" \
+    && rustup target add $TARGET \
+    && cargo build --release --target $TARGET \
+    && strip target/$TARGET/release/lychee
 
+# Our production image starts here, which uses
+# the files from the builder image above.
 FROM debian:trixie-slim
 
 RUN apt-get update \
