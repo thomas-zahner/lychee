@@ -905,3 +905,12 @@ at your option.
 
 <br><hr>
 [🔼 Back to top](#back-to-top)
+
+
+
+TODO: aarch target??
+Why not buliding just dependencies?
+
+-> didnt work!
+
+Also see: https://github.com/rust-lang/cargo/issues/2644
